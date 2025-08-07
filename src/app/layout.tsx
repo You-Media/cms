@@ -16,21 +16,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="it">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                const theme = sessionStorage.getItem('theme') || 'dark';
-                if (theme === 'dark') {
-                  document.documentElement.setAttribute('data-theme', 'dark');
-                }
-              })();
-            `,
-          }}
-        />
-      </head>
+    <html lang="it" data-theme="dark">
       <body className={inter.className}>
         {children}
         <ThemeToggle />

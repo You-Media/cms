@@ -3,20 +3,14 @@
 import { useState } from 'react'
 import { LoginForm } from '@/components/forms/login-form'
 import { OtpForm } from '@/components/forms/otp-form'
+import type { LoginFormData } from '@/lib/validations'
+
 
 export default function LoginPage() {
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials')
-  const [loginData, setLoginData] = useState<{
-    email: string
-    password: string
-    siteId: string
-  } | null>(null)
+  const [loginData, setLoginData] = useState<LoginFormData | null>(null)
 
-  const handleCredentialsSubmit = (data: {
-    email: string
-    password: string
-    siteId: string
-  }) => {
+  const handleCredentialsSubmit = (data: LoginFormData) => {
     setLoginData(data)
     setStep('otp')
   }

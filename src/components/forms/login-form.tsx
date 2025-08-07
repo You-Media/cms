@@ -3,54 +3,45 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-
-const loginSchema = z.object({
-  email: z.string().email('Email non valida'),
-  password: z.string().min(1, 'Password richiesta'),
-  siteId: z.string().min(1, 'Seleziona un sito'),
-})
-
-type LoginFormData = z.infer<typeof loginSchema>
+import { loginSchema } from '@/lib/validations'
+import type { LoginFormData } from '@/lib/validations'
+import { useAuthStore } from '@/stores/auth-store'
+import { useRouter } from 'next/navigation'
+import { useSites } from '@/hooks/use-sites'
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void
 }
 
-const AVAILABLE_SITES = [
-  {
-    id: 'editoriaresponsabile.com',
-    name: 'editoriaresponsabile.com',
-    domain: 'editoriaresponsabile.com'
-  }
-]
-
 export function LoginForm({ onSubmit }: LoginFormProps) {
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { login, isLoading, error, clearError } = useAuthStore()
+  const { activeSites } = useSites()
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
-      siteId: '',
+      site: activeSites[0]?.id || '',
     },
   })
 
   const handleSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
+    if (isLoading) return
+    
     try {
-      // Qui andrà la chiamata API per il primo step del login
-      console.log('Login data:', data)
+      clearError()
+      await login(data, data.site)
+      // Se il login ha successo, procedi al prossimo step
       onSubmit(data)
     } catch (error) {
+      // L'errore è già gestito nello store
       console.error('Login error:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -93,7 +84,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
         />
         <FormField
           control={form.control}
-          name="siteId"
+          name="site"
           render={({ field }) => (
             <FormItem className="space-y-2">
               <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -106,7 +97,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {AVAILABLE_SITES.map((site) => (
+                  {activeSites.map((site) => (
                     <SelectItem key={site.id} value={site.id}>
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -120,6 +111,12 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
             </FormItem>
           )}
         />
+        
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
         
         <div className="pt-4">
           <Button type="submit" className="w-full h-12" disabled={isLoading}>

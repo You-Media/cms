@@ -3,23 +3,14 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-
-const otpSchema = z.object({
-  otp: z.string().length(6, 'Il codice OTP deve essere di 6 cifre'),
-})
-
-type OtpFormData = z.infer<typeof otpSchema>
+import { otpSchema } from '@/lib/validations'
+import type { OtpFormData, LoginFormData } from '@/lib/validations'
 
 interface OtpFormProps {
-  loginData: {
-    email: string
-    password: string
-    siteId: string
-  }
+  loginData: LoginFormData
   onBack: () => void
 }
 

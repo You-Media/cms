@@ -1,0 +1,11 @@
+{
+  "sites": [
+    {
+      "id": "editoria",
+      "name": "editoriaresponsabile.com",
+      "domain": "editoriaresponsabile.com",
+      "description": "Sito principale di Editoria Responsabile",
+      "active": true
+    }
+  ]
+}
