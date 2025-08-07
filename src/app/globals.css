@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(45 93% 47%);
+  --color-primary-foreground: hsl(222.2 84% 4.9%);
+  --color-secondary: hsl(210 40% 96%);
+  --color-secondary-foreground: hsl(222.2 84% 4.9%);
+  --color-muted: hsl(210 40% 96%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96%);
+  --color-accent-foreground: hsl(222.2 84% 4.9%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(45 93% 47%);
+  --color-radius: 0.75rem;
+  
+  /* Nuovi colori per il design moderno - giallo scuro */
+  --color-gradient-start: hsl(45 93% 47%);
+  --color-gradient-end: hsl(35 91% 55%);
+  --color-surface: hsl(0 0% 98%);
+  --color-surface-2: hsl(0 0% 96%);
+}
+
+/* Attiva dark mode via data-theme come da documentazione Tailwind v4 */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@layer base {
+  html { color-scheme: light; }
+  [data-theme="dark"] { color-scheme: dark; }
+
+  [data-theme="dark"] {
+    --color-background: hsl(222.2 84% 4.9%);
+    --color-foreground: hsl(210 40% 98%);
+    --color-card: hsl(215 28% 7%);
+    --color-card-foreground: hsl(210 40% 98%);
+    --color-popover: hsl(215 28% 7%);
+    --color-popover-foreground: hsl(210 40% 98%);
+    --color-primary: hsl(45 93% 47%);
+    --color-primary-foreground: hsl(222.2 84% 4.9%);
+    --color-secondary: hsl(217.2 32.6% 17.5%);
+    --color-secondary-foreground: hsl(210 40% 98%);
+    --color-muted: hsl(217.2 32.6% 17.5%);
+    --color-muted-foreground: hsl(215 20.2% 65.1%);
+    --color-accent: hsl(217.2 32.6% 17.5%);
+    --color-accent-foreground: hsl(210 40% 98%);
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-destructive-foreground: hsl(210 40% 98%);
+    --color-border: hsl(217.2 32.6% 17.5%);
+    --color-input: hsl(217.2 32.6% 17.5%);
+    --color-ring: hsl(45 93% 47%);
+    
+    /* Dark mode gradient colors - giallo scuro */
+    --color-gradient-start: hsl(45 93% 47%);
+    --color-gradient-end: hsl(35 91% 55%);
+    --color-surface: hsl(215 28% 7%);
+    --color-surface-2: hsl(217.2 32.6% 17.5%);
+  }
+}
