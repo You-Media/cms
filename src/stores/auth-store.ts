@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api';
+import { API_ENDPOINTS } from '@/config/endpoints';
 import type { LoginCredentials, LoginResponse, User, AuthState } from '@/types/auth';
-import type { LoginApiCredentials, OtpResponse, OtpData } from '@/lib/validations';
+import type { LoginApiCredentials, OtpResponse, OtpData, OtpVerifyResponse } from '@/lib/validations';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials, site: string) => Promise<OtpData | null>;
-  logout: () => void;
+  logout: () => Promise<void>;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   clearError: () => void;
@@ -15,7 +16,7 @@ interface AuthStore extends AuthState {
   isTempTokenValid: () => boolean;
   clearTempToken: () => void;
   generateNewOtp: () => Promise<OtpData>;
-  verifyOtp: (otp: string) => Promise<{ user: User; token: string; article_filter_preferences?: any }>;
+  verifyOtp: (otp: string) => Promise<{ user: User; token: string }>;
   selectedSite: string | null;
   setSelectedSite: (site: string) => void;
   clearSelectedSite: () => void;
@@ -43,7 +44,7 @@ export const useAuthStore = create<AuthStore>()(
             email: credentials.email,
             password: credentials.password,
           };
-          const response = await api.post<OtpResponse>('/auth/login', apiCredentials, {
+          const response = await api.post<OtpResponse>(API_ENDPOINTS.AUTH.LOGIN, apiCredentials, {
             'X-Site': site,
           });
 
@@ -70,11 +71,11 @@ export const useAuthStore = create<AuthStore>()(
 
           // Se non richiede OTP, procedi con il login normale
           const loginResponse = response as unknown as LoginResponse;
-          api.setToken(loginResponse.token);
+          api.setToken(loginResponse.data.access_token);
 
           set({
-            user: loginResponse.user,
-            token: loginResponse.token,
+            user: loginResponse.data.user,
+            token: loginResponse.data.access_token,
             selectedSite: site,
             isLoading: false,
             error: null,
@@ -93,17 +94,27 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: () => {
-        api.clearToken();
-        api.clearSelectedSite();
-        set({
-          user: null,
-          token: null,
-          isLoading: false,
-          error: null,
-          otpData: null,
-          selectedSite: null,
-        });
+      logout: async () => {
+        try {
+          // Chiama l'API di logout per invalidare il token
+          await api.post(API_ENDPOINTS.AUTH.LOGOUT);
+        } catch (error) {
+          console.error('Logout API error:', error);
+          // Non bloccare il logout se l'API fallisce
+        } finally {
+          // Pulisci sempre i dati locali anche se l'API fallisce
+          api.clearToken();
+          api.clearSelectedSite();
+          api.clearTempAuthToken();
+          set({
+            user: null,
+            token: null,
+            isLoading: false,
+            error: null,
+            otpData: null,
+            selectedSite: null,
+          });
+        }
       },
 
       setUser: (user: User) => {
@@ -213,13 +224,20 @@ export const useAuthStore = create<AuthStore>()(
           // Verifica OTP
           const response = await api.verifyOtp(otpData.email, otp, otpData.temp_auth_token);
           
+          // Estrai il token dalla risposta
+          const token = response.data.access_token;
+          
+          if (!token) {
+            throw new Error('Token non trovato nella risposta API');
+          }
+          
           // Imposta il token permanente nell'API client
-          api.setToken(response.data.token);
+          api.setToken(token);
           
           // Aggiorna lo stato con i dati dell'utente
           set({
             user: response.data.user,
-            token: response.data.token,
+            token: token,
             isLoading: false,
             error: null,
             otpData: null, // Pulisci i dati OTP
@@ -230,8 +248,7 @@ export const useAuthStore = create<AuthStore>()(
           
           return {
             user: response.data.user,
-            token: response.data.token,
-            article_filter_preferences: response.data.article_filter_preferences,
+            token: token,
           };
         } catch (error) {
           // Pulisci il token temporaneo dall'API client in caso di errore
@@ -248,6 +265,15 @@ export const useAuthStore = create<AuthStore>()(
         otpData: state.otpData,
         selectedSite: state.selectedSite,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          // Ripristina il token e il sito nell'API client
+          api.setToken(state.token);
+          if (state.selectedSite) {
+            api.setSelectedSite(state.selectedSite);
+          }
+        }
+      },
     }
   )
 );

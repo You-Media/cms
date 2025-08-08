@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -10,6 +11,7 @@ import { otpSchema } from '@/lib/validations'
 import type { OtpFormData, OtpData } from '@/lib/validations'
 import { useAuthStore } from '@/stores/auth-store'
 import { toast } from 'sonner'
+import { APP_ROUTES } from '@/config/routes'
 
 interface OtpFormProps {
   otpData: OtpData
@@ -17,7 +19,9 @@ interface OtpFormProps {
 }
 
 export function OtpForm({ otpData, onBack }: OtpFormProps) {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [loginCompleted, setLoginCompleted] = useState(false) // Nuovo stato per tracciare login completato
   const [timeLeft, setTimeLeft] = useState(() => {
     // Calcola il tempo rimanente basandosi sul timestamp di creazione
     const now = Date.now();
@@ -75,9 +79,15 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
     return () => clearInterval(timer)
   }, [timeLeft])
 
-  // Monitora la validità del token temporaneo
+  // Monitora la validità del token temporaneo (solo se il login non è ancora completato)
   useEffect(() => {
-    const { isTempTokenValid, clearTempToken } = useAuthStore.getState()
+    // Non controllare se il login è già completato
+    if (loginCompleted) return
+    
+    const { isTempTokenValid, clearTempToken, user, token } = useAuthStore.getState()
+    
+    // Se l'utente è già loggato (ha user e token), non controllare il temp token
+    if (user && token) return
     
     if (!isTempTokenValid()) {
       // Token scaduto, puliscilo e torna al login
@@ -88,7 +98,7 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
       })
       onBack()
     }
-  }, [onBack])
+  }, [onBack, loginCompleted])
 
   // Formatta il tempo rimanente in mm:ss
   const formatTime = (seconds: number) => {
@@ -117,23 +127,23 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
         return
       }
       
-      const result = await verifyOtp(data.otp)
-      
-      // Login completato con successo
-      console.log('Login completato:', result)
-      
-      // Toast di successo
-      toast.success('Login completato', {
-        description: 'Accesso effettuato con successo!',
-        duration: 3000,
-      })
-      
-      // Qui puoi reindirizzare alla dashboard o gestire i dati dell'utente
-      // router.push('/dashboard')
+                const result = await verifyOtp(data.otp)
+          
+          // Imposta login completato per evitare controlli sul token temporaneo
+          setLoginCompleted(true)
+          
+          // Toast di successo
+          toast.success('Login completato', {
+            description: 'Accesso effettuato con successo!',
+            duration: 3000,
+          })
+          
+          // Aspetta un momento per permettere a Zustand di persistere lo stato
+          setTimeout(() => {
+            router.push(APP_ROUTES.DASHBOARD.HOME)
+          }, 100)
       
     } catch (error) {
-      console.error('OTP verification error:', error)
-      
       // Se l'errore è relativo al token scaduto, puliscilo e torna al login
       if (error instanceof Error && (
         error.message.includes('Token temporaneo scaduto') || 
@@ -156,7 +166,7 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
   }
 
   const handleResendOtp = async () => {
-    if (!canResend) return
+    if (!canResend || loginCompleted) return // Non resendere se login completato
     
     setIsLoading(true)
     setResendError(null) // Pulisci errori precedenti

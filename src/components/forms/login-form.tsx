@@ -12,6 +12,8 @@ import type { LoginFormData } from '@/lib/validations'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRouter } from 'next/navigation'
 import { useSites } from '@/hooks/use-sites'
+import Link from 'next/link'
+import { APP_ROUTES } from '@/config/routes'
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void
@@ -47,7 +49,6 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
       }
     } catch (error) {
       // L'errore è già gestito nello store
-      console.error('Login error:', error)
     }
   }
 
@@ -84,6 +85,12 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
+              <Link
+                href={APP_ROUTES.AUTH.FORGOT_PASSWORD}
+                className="mt-1 block text-right text-sm text-amber-600 dark:text-amber-400 hover:underline"
+              >
+                Password dimenticata?
+              </Link>
               <FormMessage />
             </FormItem>
           )}

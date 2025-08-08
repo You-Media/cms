@@ -7,8 +7,8 @@ import { ToastProvider } from '@/components/ui/toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CMS Multi-Sito',
-  description: 'Sistema di gestione contenuti multi-sito',
+  title: 'CMS YouMedia',
+  description: 'Sistema di gestione contenuti YouMedia',
 }
 
 export default function RootLayout({

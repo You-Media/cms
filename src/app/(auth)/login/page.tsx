@@ -51,11 +51,9 @@ export default function LoginPage() {
       } else {
         // Se non richiede OTP, il login è completato
         // Qui puoi reindirizzare alla dashboard
-        console.log('Login completato senza OTP')
       }
     } catch (error) {
       // L'errore è già gestito nello store
-      console.error('Login error:', error)
     }
   }
 

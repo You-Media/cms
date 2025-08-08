@@ -4,23 +4,35 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  user: User;
-  token: string;
-  articleFilterPreferences?: ArticleFilterPreferences;
+  status: 'success';
+  message: string;
+  data: {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user: User;
+    last_login_at: string;
+  };
+}
+
+export interface UserProfile {
+  id: number;
+  team_id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  profile_photo: string;
 }
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  name?: string;
-  role: UserRole;
-  siteIds: string[];
-  permissions: Permission[];
-  metadata?: {
-    department?: string;
-    lastLogin?: Date;
-    preferences?: Record<string, any>;
-  };
+  email_verified_at: string | null;
+  profile: UserProfile;
+  created_at: string | null;
+  updated_at: string | null;
+  roles: string[];
+  permissions: string[];
 }
 
 export type UserRole = 'super_admin' | 'site_admin' | 'editor' | 'viewer';

@@ -1,11 +1,13 @@
+import { API_ENDPOINTS, buildApiUrl } from '@/config/endpoints';
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private tempAuthToken: string | null = null;
   private selectedSite: string | null = null;
 
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
+  constructor(baseURL?: string) {
+    this.baseURL = baseURL || API_ENDPOINTS.BASE_URL;
   }
 
   private async request<T>(
@@ -50,7 +52,6 @@ class ApiClient {
           errorData = await response.json();
           serverMessage = (errorData as any).message || (errorData as any).error || (errorData as any).detail;
         } catch (parseError) {
-          // Se il parsing JSON fallisce, usa il messaggio di default per lo status
           console.warn('Failed to parse error response:', parseError);
         }
         
@@ -114,16 +115,26 @@ class ApiClient {
 
   // Metodo specifico per generare nuovo OTP
   async generateOtp(): Promise<{ status: string; message: string; data: { message: string; expires_in: number } }> {
-    return this.post<{ status: string; message: string; data: { message: string; expires_in: number } }>('/otp/generate');
+    return this.post<{ status: string; message: string; data: { message: string; expires_in: number } }>(API_ENDPOINTS.OTP.GENERATE);
   }
 
   // Metodo specifico per verificare OTP
-  async verifyOtp(email: string, otp: string, tempAuthToken: string): Promise<{ status: string; message: string; data: { user: any; token: string; article_filter_preferences?: any } }> {
-    return this.post<{ status: string; message: string; data: { user: any; token: string; article_filter_preferences?: any } }>('/auth/verify-otp', {
+  async verifyOtp(email: string, otp: string, tempAuthToken: string): Promise<{ status: string; message: string; data: { access_token: string; token_type: string; expires_in: number; user: any; last_login_at: string } }> {
+    return this.post<{ status: string; message: string; data: { access_token: string; token_type: string; expires_in: number; user: any; last_login_at: string } }>(API_ENDPOINTS.AUTH.VERIFY_OTP, {
       email,
       otp,
       temp_auth_token: tempAuthToken,
     });
+  }
+
+  // Forgot password: invia link reset via email
+  async forgotPassword(email: string): Promise<{ status: string; message: string; data?: { message: string } }> {
+    return this.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+  }
+
+  // Reset password con token
+  async resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }): Promise<{ status: string; message: string }> {
+    return this.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, payload)
   }
 }
 
@@ -161,7 +172,7 @@ export class ApiError extends Error {
       403: 'Accesso negato',
       404: 'Risorsa non trovata',
       409: 'Conflitto - La risorsa esiste già',
-      422: 'Dati non validi - Verifica il codice OTP',
+      422: 'Dati non validi - Verifica i campi',
       429: 'Troppe richieste - Riprova più tardi',
       500: 'Errore interno del server',
       502: 'Errore del gateway',
@@ -190,4 +201,4 @@ export class ApiError extends Error {
 }
 
 // Istanza globale
-export const api = new ApiClient(process.env.NEXT_PUBLIC_API_BASE_URL!);
+export const api = new ApiClient();

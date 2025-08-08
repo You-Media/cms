@@ -31,9 +31,11 @@ export interface OtpVerifyResponse {
   status: 'success';
   message: string;
   data: {
-    user: any; // Sostituiremo con il tipo User corretto
-    token: string;
-    article_filter_preferences?: any; // Per utenti editoria
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user: any; // Useremo il tipo User da auth.ts
+    last_login_at: string;
   };
 }
 
@@ -67,3 +69,26 @@ export interface OtpData {
   site: string;
   created_at: number; // Timestamp di creazione in millisecondi
 }
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Email non valida').max(255, 'Email troppo lunga'),
+})
+export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email('Email non valida').max(255, 'Email troppo lunga'),
+  token: z.string().min(1, 'Token mancante').max(255, 'Token non valido'),
+  password: z
+    .string()
+    .min(8, 'Minimo 8 caratteri')
+    .max(255)
+    .regex(/[A-Z]/, 'Almeno una lettera maiuscola')
+    .regex(/[a-z]/, 'Almeno una lettera minuscola')
+    .regex(/[0-9]/, 'Almeno un numero')
+    .regex(/[^A-Za-z0-9]/, 'Almeno un carattere speciale'),
+  password_confirmation: z.string(),
+}).refine((data) => data.password === data.password_confirmation, {
+  path: ['password_confirmation'],
+  message: 'Le password non coincidono',
+})
+export type ResetPasswordForm = z.infer<typeof resetPasswordSchema>
