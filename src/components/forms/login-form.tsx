@@ -36,9 +36,15 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
     
     try {
       clearError()
-      await login(data, data.site)
-      // Se il login ha successo, procedi al prossimo step
-      onSubmit(data)
+      const otpResponse = await login(data, data.site)
+      
+      if (otpResponse) {
+        // Se richiede OTP, passa i dati OTP
+        onSubmit(data)
+      } else {
+        // Se non richiede OTP, il login è completato
+        onSubmit(data)
+      }
     } catch (error) {
       // L'errore è già gestito nello store
       console.error('Login error:', error)

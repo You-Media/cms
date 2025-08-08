@@ -1,6 +1,8 @@
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
+  private tempAuthToken: string | null = null;
+  private selectedSite: string | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -20,6 +22,15 @@ class ApiClient {
 
     if (this.token) {
       requestHeaders.Authorization = `Bearer ${this.token}`;
+    }
+
+    if (this.tempAuthToken) {
+      requestHeaders['X-Temp-Auth-Token'] = this.tempAuthToken;
+    }
+
+    // Aggiungi sempre l'header X-Site se disponibile
+    if (this.selectedSite) {
+      requestHeaders['X-Site'] = this.selectedSite;
     }
 
     const config: RequestInit = {
@@ -84,6 +95,36 @@ class ApiClient {
   clearToken() {
     this.token = null;
   }
+
+  setTempAuthToken(tempAuthToken: string) {
+    this.tempAuthToken = tempAuthToken;
+  }
+
+  clearTempAuthToken() {
+    this.tempAuthToken = null;
+  }
+
+  setSelectedSite(site: string) {
+    this.selectedSite = site;
+  }
+
+  clearSelectedSite() {
+    this.selectedSite = null;
+  }
+
+  // Metodo specifico per generare nuovo OTP
+  async generateOtp(): Promise<{ status: string; message: string; data: { message: string; expires_in: number } }> {
+    return this.post<{ status: string; message: string; data: { message: string; expires_in: number } }>('/otp/generate');
+  }
+
+  // Metodo specifico per verificare OTP
+  async verifyOtp(email: string, otp: string, tempAuthToken: string): Promise<{ status: string; message: string; data: { user: any; token: string; article_filter_preferences?: any } }> {
+    return this.post<{ status: string; message: string; data: { user: any; token: string; article_filter_preferences?: any } }>('/auth/verify-otp', {
+      email,
+      otp,
+      temp_auth_token: tempAuthToken,
+    });
+  }
 }
 
 export class ApiError extends Error {
@@ -100,6 +141,11 @@ export class ApiError extends Error {
       'Invalid credentials': 'Credenziali non valide',
       'User not found': 'Utente non trovato',
       'Account disabled': 'Account disabilitato',
+      'Codice OTP non valido o scaduto': 'Codice OTP non valido o scaduto',
+      'Invalid OTP': 'Codice OTP non valido',
+      'OTP expired': 'Codice OTP scaduto',
+      'OTP already used': 'Codice OTP già utilizzato',
+      'Too many OTP attempts': 'Troppi tentativi OTP - Riprova più tardi',
     };
 
     // Se abbiamo un messaggio del server mappato, usalo
@@ -115,7 +161,7 @@ export class ApiError extends Error {
       403: 'Accesso negato',
       404: 'Risorsa non trovata',
       409: 'Conflitto - La risorsa esiste già',
-      422: 'Dati non validi',
+      422: 'Dati non validi - Verifica il codice OTP',
       429: 'Troppe richieste - Riprova più tardi',
       500: 'Errore interno del server',
       502: 'Errore del gateway',

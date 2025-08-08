@@ -19,3 +19,51 @@ export const otpSchema = z.object({
 });
 
 export type OtpFormData = z.infer<typeof otpSchema>;
+
+// Tipi per la verifica OTP
+export interface OtpVerifyRequest {
+  email: string;
+  otp: string;
+  temp_auth_token: string;
+}
+
+export interface OtpVerifyResponse {
+  status: 'success';
+  message: string;
+  data: {
+    user: any; // Sostituiremo con il tipo User corretto
+    token: string;
+    article_filter_preferences?: any; // Per utenti editoria
+  };
+}
+
+// Tipi per la risposta OTP
+export interface OtpResponse {
+  status: 'success';
+  message: string;
+  data: {
+    requires_otp: boolean;
+    temp_auth_token: string;
+    message: string;
+    expires_in: number;
+    token_expires_in: number;
+  };
+}
+
+export interface OtpGenerateResponse {
+  status: 'success';
+  message: string;
+  data: {
+    message: string;
+    expires_in: number;
+  };
+}
+
+export interface OtpData {
+  temp_auth_token: string;
+  expires_in: number;
+  token_expires_in: number;
+  email: string;
+  site: string;
+  created_at: number; // Timestamp di creazione in millisecondi
+}

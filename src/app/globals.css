@@ -64,3 +64,92 @@
     --color-surface-2: hsl(217.2 32.6% 17.5%);
   }
 }
+
+/* Stili personalizzati per i toast */
+@layer components {
+  .toast-success {
+    @apply bg-green-900/95 border-green-600 text-green-50;
+  }
+  
+  .toast-error {
+    @apply bg-red-900/95 border-red-600 text-red-50;
+  }
+  
+  .toast-warning {
+    @apply bg-amber-900/95 border-amber-600 text-amber-50;
+  }
+  
+  [data-theme="dark"] .toast-success {
+    @apply bg-green-900/95 border-green-600 text-green-50;
+  }
+  
+  [data-theme="dark"] .toast-error {
+    @apply bg-red-900/95 border-red-600 text-red-50;
+  }
+  
+  [data-theme="dark"] .toast-warning {
+    @apply bg-amber-900/95 border-amber-600 text-amber-50;
+  }
+}
+
+/* Sovrascrive direttamente gli stili di Sonner */
+[data-sonner-toaster] [data-type="success"] {
+  background-color: rgb(20 83 45 / 0.95) !important;
+  border-color: rgb(22 163 74) !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-description] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="error"] {
+  background-color: rgb(127 29 29 / 0.95) !important;
+  border-color: rgb(220 38 38) !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-description] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] {
+  background-color: rgb(120 53 15 / 0.95) !important;
+  border-color: rgb(217 119 6) !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-description] {
+  color: white !important;
+}
+
+/* Stili per dark mode */
+[data-theme="dark"] [data-sonner-toaster] [data-type="success"] {
+  background-color: rgb(20 83 45 / 0.95) !important;
+  border-color: rgb(22 163 74) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="success"] [data-description] {
+  color: white !important;
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="error"] {
+  background-color: rgb(127 29 29 / 0.95) !important;
+  border-color: rgb(220 38 38) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="error"] [data-description] {
+  color: white !important;
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="warning"] {
+  background-color: rgb(120 53 15 / 0.95) !important;
+  border-color: rgb(217 119 6) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] [data-sonner-toaster] [data-type="warning"] [data-description] {
+  color: white !important;
+}
