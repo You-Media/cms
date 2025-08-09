@@ -5,6 +5,10 @@ class ApiClient {
   private token: string | null = null;
   private tempAuthToken: string | null = null;
   private selectedSite: string | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<string> | null = null;
+  private onTokenRefreshedCallback: ((newToken: string) => void) | null = null;
+  private onAuthFailureCallback: (() => void) | null = null;
 
   constructor(baseURL?: string) {
     this.baseURL = baseURL || API_ENDPOINTS.BASE_URL;
@@ -14,7 +18,8 @@ class ApiClient {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     endpoint: string,
     data?: any,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    options?: { skipAuthRefresh?: boolean }
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const requestHeaders: Record<string, string> = {
@@ -45,6 +50,23 @@ class ApiClient {
       const response = await fetch(url, config);
       
       if (!response.ok) {
+        // Gestione 401 con fallback refresh, esclusi gli endpoint pubblici e il refresh stesso
+        if (
+          response.status === 401 &&
+          !options?.skipAuthRefresh &&
+          endpoint !== API_ENDPOINTS.AUTH.REFRESH &&
+          endpoint !== API_ENDPOINTS.AUTH.LOGIN &&
+          endpoint !== API_ENDPOINTS.AUTH.VERIFY_OTP &&
+          endpoint !== API_ENDPOINTS.AUTH.FORGOT_PASSWORD &&
+          endpoint !== API_ENDPOINTS.AUTH.RESET_PASSWORD
+        ) {
+          const refreshed = await this.handleTokenRefresh();
+          if (refreshed) {
+            // Riprova una sola volta con skipAuthRefresh per evitare loop
+            return this.request<T>(method, endpoint, data, headers, { skipAuthRefresh: true });
+          }
+        }
+
         let errorData = {};
         let serverMessage = '';
         
@@ -111,6 +133,65 @@ class ApiClient {
 
   clearSelectedSite() {
     this.selectedSite = null;
+  }
+
+  onTokenRefreshed(cb: (newToken: string) => void) {
+    this.onTokenRefreshedCallback = cb;
+  }
+
+  onAuthFailure(cb: () => void) {
+    this.onAuthFailureCallback = cb;
+  }
+
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (this.isRefreshing) {
+      try {
+        const newToken = await (this.refreshPromise as Promise<string>);
+        if (newToken) return true;
+        return false;
+      } catch {
+        return false;
+      }
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshToken();
+
+    try {
+      const newToken = await this.refreshPromise;
+      if (newToken) {
+        this.setToken(newToken);
+        if (this.onTokenRefreshedCallback) {
+          this.onTokenRefreshedCallback(newToken);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      // Fallimento refresh: pulisci token e notifica
+      this.clearToken();
+      if (this.onAuthFailureCallback) {
+        this.onAuthFailureCallback();
+      }
+      return false;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
+  async refreshToken(): Promise<string> {
+    // Assumi che il backend usi cookie httpOnly per refresh, oppure accetti bearer esistente
+    const res = await this.post<{ status: string; message: string; data: { access_token: string; expires_in?: number } }>(API_ENDPOINTS.AUTH.REFRESH, {});
+    const newToken = res?.data?.access_token;
+    if (!newToken) {
+      throw new ApiError(401, 'Impossibile rinnovare il token');
+    }
+    return newToken;
+  }
+
+  async getMe(): Promise<{ status: string; message: string; data: any }> {
+    return this.get(API_ENDPOINTS.AUTH.ME);
   }
 
   // Metodo specifico per generare nuovo OTP

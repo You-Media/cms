@@ -1,9 +1,19 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { useAuthStore } from '@/stores/auth-store'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const fetchMe = useAuthStore((s) => s.fetchMe)
+  const didFetchRef = useRef(false)
+
+  useEffect(() => {
+    if (didFetchRef.current) return
+    didFetchRef.current = true
+    fetchMe()
+  }, [fetchMe])
 
   return (
     <div className="space-y-6">

@@ -20,6 +20,7 @@ interface AuthStore extends AuthState {
   selectedSite: string | null;
   setSelectedSite: (site: string) => void;
   clearSelectedSite: () => void;
+  fetchMe: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -81,6 +82,15 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
             otpData: null,
           });
+
+          // Registra i callback per refresh/failure
+          api.onTokenRefreshed((newToken) => {
+            useAuthStore.setState({ token: newToken });
+            useAuthStore.getState().fetchMe().catch(() => {});
+          });
+          api.onAuthFailure(() => {
+            useAuthStore.getState().logout();
+          });
           
           return null;
         } catch (error) {
@@ -124,6 +134,14 @@ export const useAuthStore = create<AuthStore>()(
       setToken: (token: string) => {
         api.setToken(token);
         set({ token });
+        // Registra i callback per refresh/failure anche quando il token cambia
+        api.onTokenRefreshed((newToken) => {
+          useAuthStore.setState({ token: newToken });
+          useAuthStore.getState().fetchMe().catch(() => {});
+        });
+        api.onAuthFailure(() => {
+          useAuthStore.getState().logout();
+        });
       },
 
       clearError: () => {
@@ -243,6 +261,15 @@ export const useAuthStore = create<AuthStore>()(
             otpData: null, // Pulisci i dati OTP
           });
           
+          // Registra i callback per refresh/failure
+          api.onTokenRefreshed((newToken) => {
+            useAuthStore.setState({ token: newToken });
+            useAuthStore.getState().fetchMe().catch(() => {});
+          });
+          api.onAuthFailure(() => {
+            useAuthStore.getState().logout();
+          });
+
           // Pulisci il token temporaneo dall'API client
           api.clearTempAuthToken();
           
@@ -254,6 +281,19 @@ export const useAuthStore = create<AuthStore>()(
           // Pulisci il token temporaneo dall'API client in caso di errore
           api.clearTempAuthToken();
           throw error;
+        }
+      },
+
+      // Recupera i dati utente dal backend
+      fetchMe: async () => {
+        const { token } = get();
+        if (!token) return;
+        try {
+          const res = await api.getMe();
+          const user = res?.data as User;
+          if (user) set({ user });
+        } catch (error) {
+          // Se fallisce con 401, verrà gestito dal client API (refresh -> logout)
         }
       },
     }),
@@ -272,6 +312,14 @@ export const useAuthStore = create<AuthStore>()(
           if (state.selectedSite) {
             api.setSelectedSite(state.selectedSite);
           }
+          // Aggancia callback anche dopo reidratazione
+          api.onTokenRefreshed((newToken) => {
+            useAuthStore.setState({ token: newToken });
+            useAuthStore.getState().fetchMe().catch(() => {});
+          });
+          api.onAuthFailure(() => {
+            useAuthStore.getState().logout();
+          });
         }
       },
     }
