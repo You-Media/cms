@@ -128,13 +128,29 @@ class ApiClient {
   }
 
   // Forgot password: invia link reset via email
-  async forgotPassword(email: string): Promise<{ status: string; message: string; data?: { message: string } }> {
-    return this.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+  async forgotPassword(email: string, site?: string): Promise<{ status: string; message: string; data?: { message: string } }> {
+    const headers = site ? { 'X-Site': site } : undefined
+    try {
+      return await this.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email }, headers)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new AuthError(error.status, error.message)
+      }
+      throw error
+    }
   }
 
   // Reset password con token
-  async resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }): Promise<{ status: string; message: string }> {
-    return this.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, payload)
+  async resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }, site?: string): Promise<{ status: string; message: string }> {
+    const headers = site ? { 'X-Site': site } : undefined
+    try {
+      return await this.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, payload, headers)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw new AuthError(error.status, error.message)
+      }
+      throw error
+      }
   }
 }
 
@@ -197,6 +213,34 @@ export class ApiError extends Error {
 
   get isServerError(): boolean {
     return ApiError.isServerError(this.status);
+  }
+}
+
+// Classe di errore personalizzata per l'autenticazione
+export class AuthError extends Error {
+  constructor(public status: number, message?: string) {
+    super(AuthError.getErrorMessage(status, message));
+    this.name = 'AuthError';
+  }
+ 
+  static getErrorMessage(status: number, serverMessage?: string): string {
+    // Mappatura specifica per errori di autenticazione
+    const authErrorMessages: Record<number, string> = {
+      0: 'Errore di connessione - Verifica la connessione internet',
+      400: 'Richiesta non valida',
+      401: 'Non autorizzato - Effettua il login',
+      403: 'Accesso negato',
+      404: 'Utente non trovato', // Mappa 404 a "Utente non trovato" per l'auth
+      409: 'Conflitto - La risorsa esiste già',
+      422: 'Dati non validi - Verifica i campi',
+      429: 'Troppe richieste - Riprova più tardi',
+      500: 'Errore interno del server',
+      502: 'Errore del gateway',
+      503: 'Servizio non disponibile',
+      504: 'Timeout del gateway',
+    };
+ 
+    return authErrorMessages[status] || `Errore ${status} - Si è verificato un problema`;
   }
 }
 

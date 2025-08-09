@@ -72,12 +72,14 @@ export interface OtpData {
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Email non valida').max(255, 'Email troppo lunga'),
+  site: z.string().min(1, 'Sito richiesto'),
 })
 export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>
 
 export const resetPasswordSchema = z.object({
   email: z.string().email('Email non valida').max(255, 'Email troppo lunga'),
   token: z.string().min(1, 'Token mancante').max(255, 'Token non valido'),
+  site: z.string().min(1, 'Sito richiesto'),
   password: z
     .string()
     .min(8, 'Minimo 8 caratteri')

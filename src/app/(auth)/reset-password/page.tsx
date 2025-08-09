@@ -8,21 +8,32 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { resetPasswordSchema, type ResetPasswordForm } from '@/lib/validations'
-import { api } from '@/lib/api'
+import { api, AuthError } from '@/lib/api'
 import { toast } from 'sonner'
 import { APP_ROUTES } from '@/config/routes'
+import { useSites } from '@/hooks/use-sites'
+import React from 'react'
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token') || ''
   const emailParam = searchParams.get('email') || ''
+  const siteParam = searchParams.get('site') || ''
   const [isLoading, setIsLoading] = useState(false)
+  const { activeSites } = useSites()
 
   const form = useForm<ResetPasswordForm>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { token, email: emailParam, password: '', password_confirmation: '' },
+    defaultValues: { token, email: emailParam, site: siteParam || activeSites[0]?.id || '', password: '', password_confirmation: '' },
   })
+
+  // Aggiorna il campo site se manca dall'URL ma è disponibile nei siti attivi
+  React.useEffect(() => {
+    if (!siteParam && activeSites.length > 0 && !form.getValues('site')) {
+      form.setValue('site', activeSites[0].id)
+    }
+  }, [siteParam, activeSites, form])
 
   const passwordHints = useMemo(() => ([
     'Minimo 8 caratteri',
@@ -33,16 +44,34 @@ export default function ResetPasswordPage() {
   ]), [])
 
   const onSubmit = async (values: ResetPasswordForm) => {
+    
+    // Controlla se tutti i campi richiesti sono presenti
+    if (!values.site) {
+      toast.error('Errore', {
+        description: 'Sito mancante. Riprova dal link email.',
+      })
+      return
+    }
+    
     setIsLoading(true)
     try {
-      await api.resetPassword(values)
+      await api.resetPassword(values, values.site)
       toast.success('Password aggiornata', {
         description: 'Ora puoi accedere con la nuova password.',
       })
       router.push(APP_ROUTES.AUTH.LOGIN)
     } catch (error) {
+      // Gestisci errori specifici
+      let errorMessage = 'Impossibile aggiornare la password'
+      
+      if (error instanceof AuthError) {
+        errorMessage = error.message
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      
       toast.error('Errore', {
-        description: error instanceof Error ? error.message : 'Impossibile aggiornare la password',
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)
@@ -82,10 +111,22 @@ export default function ResetPasswordPage() {
             control={form.control}
             name="token"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Token</FormLabel>
+              <FormItem className="hidden">
                 <FormControl>
-                  <Input type="text" placeholder="Token" {...field} />
+                  <Input type="hidden" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="site"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <Input type="hidden" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -123,8 +164,10 @@ export default function ResetPasswordPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Aggiornamento...' : 'Reimposta password'}
           </Button>
+          
         </form>
       </Form>
     </div>
   )
 }
+
