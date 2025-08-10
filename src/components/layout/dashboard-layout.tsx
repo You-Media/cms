@@ -15,7 +15,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, selectedSite, hasAnyRole } = useAuth()
+  const { user, selectedSite, hasAnyRole, hasPermission } = useAuth()
 
   // Chiudi sidebar con Escape
   useEffect(() => {
@@ -111,7 +111,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         Dashboard
                       </Link>
 
-                      {buildSidebarNavigation(selectedSite, hasAnyRole)
+                      {buildSidebarNavigation(selectedSite, hasAnyRole, hasPermission)
                         .filter((i) => i.href !== APP_ROUTES.DASHBOARD.HOME)
                         .map((item) => (
                           <Link

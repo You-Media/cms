@@ -21,6 +21,9 @@ export const APP_ROUTES = {
       LIST: '/dashboard/categories',
       TREE: '/dashboard/categories/tree',
     },
+    TAGS: {
+      LIST: '/dashboard/tags',
+    },
   },
 } as const
 
@@ -150,6 +153,7 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/roles': ['manage_roles'],
   '/dashboard/settings': ['manage_settings'],
   '/dashboard/categories': ['read_categories'],
+  '/dashboard/tags': ['read_tags'],
 }
 
 // Check if user has permission for a route

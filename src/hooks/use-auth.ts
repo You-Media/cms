@@ -69,5 +69,30 @@ export function useAuth() {
       const targets = permissions.map(normalizePermission)
       return targets.some((p) => perms.includes(p))
     },
+    // Permessi specifici per categorie e tag
+    canManageCategories: (() => {
+      const roles = user?.roles || []
+      const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      if (normalizedRoles.includes('superadmin')) return true
+      const perms = user?.permissions || []
+      const target = normalizePermission('manage_categories')
+      return perms.map(normalizePermission).includes(target)
+    })(),
+    canManageSubcategories: (() => {
+      const roles = user?.roles || []
+      const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      if (normalizedRoles.includes('superadmin')) return true
+      const perms = user?.permissions || []
+      const target = normalizePermission('manage_subcategories')
+      return perms.map(normalizePermission).includes(target)
+    })(),
+    canManageTags: (() => {
+      const roles = user?.roles || []
+      const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      if (normalizedRoles.includes('superadmin')) return true
+      const perms = user?.permissions || []
+      const target = normalizePermission('manage_tags')
+      return perms.map(normalizePermission).includes(target)
+    })(),
   }
 }

@@ -9,7 +9,8 @@ export interface SidebarItem {
 
 export function buildSidebarNavigation(
   selectedSite: string | null,
-  hasAnyRole: (rolesToCheck: string[]) => boolean
+  hasAnyRole: (rolesToCheck: string[]) => boolean,
+  hasPermission: (permission: string) => boolean
 ): SidebarItem[] {
   const items: SidebarItem[] = [
     {
@@ -25,15 +26,31 @@ export function buildSidebarNavigation(
   ]
 
   if (selectedSite === 'editoria' && hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
-    items.push({
-      name: 'Categorie',
-      href: APP_ROUTES.DASHBOARD.CATEGORIES.LIST,
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      ),
-    })
+    // Mostra categorie se l'utente ha i permessi per gestirle
+    if (hasPermission('manage_categories')) {
+      items.push({
+        name: 'Categorie',
+        href: APP_ROUTES.DASHBOARD.CATEGORIES.LIST,
+        icon: (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        ),
+      })
+    }
+    
+    // Mostra tag se l'utente ha i permessi per gestirli
+    if (hasPermission('manage_tags')) {
+      items.push({
+        name: 'Tag',
+        href: APP_ROUTES.DASHBOARD.TAGS.LIST,
+        icon: (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+        ),
+      })
+    }
   }
 
   return items

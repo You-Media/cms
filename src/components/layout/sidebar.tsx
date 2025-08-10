@@ -27,9 +27,9 @@ function classNames(...classes: string[]) {
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { user, selectedSite, hasAnyRole } = useAuth()
+  const { user, selectedSite, hasAnyRole, hasPermission } = useAuth()
 
-  const navigation = buildSidebarNavigation(selectedSite, hasAnyRole)
+  const navigation = buildSidebarNavigation(selectedSite, hasAnyRole, hasPermission)
 
   return (
     <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 pt-5 pb-4 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
