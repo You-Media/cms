@@ -23,6 +23,8 @@ export function useAuth() {
     }
   }, [token, selectedSite])
 
+  const normalizePermission = (value: string) => value.toLowerCase().trim()
+
   return {
     user,
     token,
@@ -35,5 +37,37 @@ export function useAuth() {
     fullName: user?.profile.full_name || '',
     email: user?.email || '',
     profilePhoto: user?.profile.profile_photo || '',
+    selectedSite,
+    // Helper ruoli con override superadmin
+    get isSuperAdmin() {
+      const roles = user?.roles || []
+      const normalized = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      return normalized.includes('superadmin')
+    },
+    hasAnyRole: (rolesToCheck: string[]) => {
+      const roles = user?.roles || []
+      const normalizedUserRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      const normalizedToCheck = rolesToCheck.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      // Override superadmin
+      if (normalizedUserRoles.includes('superadmin')) return true
+      return normalizedUserRoles.some((r) => normalizedToCheck.includes(r))
+    },
+    hasPermission: (permission: string) => {
+      const roles = user?.roles || []
+      // superadmin override
+      const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      if (normalizedRoles.includes('superadmin')) return true
+      const perms = user?.permissions || []
+      const target = normalizePermission(permission)
+      return perms.map(normalizePermission).includes(target)
+    },
+    hasAnyPermission: (permissions: string[]) => {
+      const roles = user?.roles || []
+      const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+      if (normalizedRoles.includes('superadmin')) return true
+      const perms = (user?.permissions || []).map(normalizePermission)
+      const targets = permissions.map(normalizePermission)
+      return targets.some((p) => perms.includes(p))
+    },
   }
 }

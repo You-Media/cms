@@ -22,6 +22,16 @@ export const API_ENDPOINTS = {
   OTP: {
     GENERATE: '/otp/generate',
   },
+
+  // Categories endpoints (nuova risorsa)
+  CATEGORIES: {
+    CREATE: '/categories',
+    SEARCH: '/categories/search',
+    TREE: '/categories/tree',
+    DETAIL: (id: number | string) => `/categories/${id}`,
+    DELETE: (id: number | string) => `/categories/${id}`,
+    UPDATE: (id: number | string) => `/categories/${id}`,
+  },
 } as const
 
 // Utility function per costruire URL completi

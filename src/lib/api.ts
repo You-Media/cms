@@ -15,7 +15,7 @@ class ApiClient {
   }
 
   private async request<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     endpoint: string,
     data?: any,
     headers?: Record<string, string>,
@@ -109,6 +109,10 @@ class ApiClient {
 
   async delete<T>(endpoint: string, headers?: Record<string, string>): Promise<T> {
     return this.request<T>('DELETE', endpoint, undefined, headers);
+  }
+
+  async patch<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>('PATCH', endpoint, data, headers);
   }
 
   setToken(token: string) {

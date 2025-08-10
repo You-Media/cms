@@ -7,6 +7,7 @@ import { UserMenu } from '@/components/layout/user-menu'
 import { Sidebar } from '@/components/layout/sidebar'
 import { LogoutButton } from '@/components/layout/logout-button'
 import { APP_ROUTES } from '@/config/routes'
+import { buildSidebarNavigation } from '@/components/layout/sidebar-config'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -14,7 +15,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user } = useAuth()
+  const { user, selectedSite, hasAnyRole } = useAuth()
 
   // Chiudi sidebar con Escape
   useEffect(() => {
@@ -97,17 +98,33 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {/* Navigation */}
                 <nav className="flex-1 px-2 space-y-1">
                   {user && (
-                    <Link
-                      href={APP_ROUTES.DASHBOARD.HOME}
-                      className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <svg className="mr-3 h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6a2 2 0 01-2 2H10a2 2 0 01-2-2V5z" />
-                      </svg>
-                      Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        href={APP_ROUTES.DASHBOARD.HOME}
+                        className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <svg className="mr-3 h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6a2 2 0 01-2 2H10a2 2 0 01-2-2V5z" />
+                        </svg>
+                        Dashboard
+                      </Link>
+
+                      {buildSidebarNavigation(selectedSite, hasAnyRole)
+                        .filter((i) => i.href !== APP_ROUTES.DASHBOARD.HOME)
+                        .map((item) => (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <span className="mr-3 h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400">{item.icon}</span>
+                            {item.name}
+                          </Link>
+                        ))}
+                    </>
                   )}
                 </nav>
 
