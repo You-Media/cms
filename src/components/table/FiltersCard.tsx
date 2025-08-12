@@ -8,6 +8,8 @@ type FiltersCardProps = {
   isLoading?: boolean
   gridCols?: 2 | 3
   submitLabel?: string
+  submitFullWidth?: boolean
+  submitUseEmptyLabel?: boolean
   children: React.ReactNode
   title?: string
 }
@@ -17,6 +19,8 @@ export function FiltersCard({
   isLoading = false,
   gridCols = 2,
   submitLabel = 'Cerca',
+  submitFullWidth = true,
+  submitUseEmptyLabel = false,
   children,
   title = 'Filtri di ricerca',
 }: FiltersCardProps) {
@@ -32,8 +36,11 @@ export function FiltersCard({
       </div>
       <form onSubmit={onSubmit} className={`grid grid-cols-1 ${mdColsClass} gap-6 items-end`}>
         {children}
-        <div className="space-y-2">
-          <Button type="submit" disabled={isLoading} className="w-full">
+        <div className={`space-y-2 ${submitFullWidth ? '' : 'flex justify-end'} h-full`}>
+          {submitUseEmptyLabel && (
+            <div className="text-sm font-medium leading-none opacity-0 select-none">Label</div>
+          )}
+          <Button type="submit" disabled={isLoading} className={`${submitFullWidth ? 'w-full' : 'w-auto'} h-12`}>
             {isLoading ? (
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">

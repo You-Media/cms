@@ -32,6 +32,15 @@ export const API_ENDPOINTS = {
     DELETE: (id: number | string) => `/categories/${id}`,
     UPDATE: (id: number | string) => `/categories/${id}`,
   },
+
+  // Banners endpoints
+  BANNERS: {
+    FILTER: '/banners/filter',
+    DELETE: (id: number | string) => `/banners/${id}`,
+    STATUS: (id: number | string) => `/banners/${id}/status`,
+    ADD: '/banners/add',
+    DETAIL: (id: number | string) => `/banners/${id}`,
+  },
 } as const
 
 // Utility function per costruire URL completi

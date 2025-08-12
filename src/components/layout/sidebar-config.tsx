@@ -53,6 +53,21 @@ export function buildSidebarNavigation(
     }
   }
 
+  if (selectedSite === 'editoria' && hasAnyRole([ 'Editor', 'EditorInChief','AdvertisingManager'])) {
+    // Mostra banner se l'utente ha il permesso di visualizzarli
+    if (hasPermission('view_banners')) {
+      items.push({
+        name: 'Banner Pubblicitari',
+        href: APP_ROUTES.DASHBOARD.BANNERS.LIST,
+        icon: (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h8" />
+          </svg>
+        ),
+      })
+    }
+  }
+
   return items
 }
 
