@@ -22,8 +22,9 @@ class ApiClient {
     options?: { skipAuthRefresh?: boolean }
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     const requestHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     };
 
@@ -43,7 +44,7 @@ class ApiClient {
     const config: RequestInit = {
       method,
       headers: requestHeaders,
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined,
     };
 
     try {

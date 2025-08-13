@@ -40,6 +40,7 @@ export default function TagsPage() {
   const [editingTag, setEditingTag] = useState<Tag | null>(null)
   const [formData, setFormData] = useState<CreateTagRequest>({
     name: '',
+    description: '',
   })
   const lastParamsRef = useRef<string>('')
 
@@ -69,7 +70,7 @@ export default function TagsPage() {
 
   const handleEdit = (tag: Tag) => {
     setEditingTag(tag)
-    setFormData({ name: tag.name})
+    setFormData({ name: tag.name, description: tag.description || '' })
     setIsEditModalOpen(true)
   }
 
@@ -100,7 +101,7 @@ export default function TagsPage() {
       await createTag(formData)
       toast.success('Tag creato con successo')
       setIsCreateModalOpen(false)
-      setFormData({ name: '' })
+      setFormData({ name: '', description: '' })
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         toast.error('Non sei autorizzato a fare questa operazione')
@@ -122,7 +123,7 @@ export default function TagsPage() {
       toast.success('Tag aggiornato con successo')
       setIsEditModalOpen(false)
       setEditingTag(null)
-      setFormData({ name: '' })
+      setFormData({ name: '', description: '' })
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         toast.error('Non sei autorizzato a fare questa operazione')
@@ -354,7 +355,21 @@ export default function TagsPage() {
                   </div>
                 </div>
                 
-
+                <div className="space-y-3">
+                  <Label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrizione (opzionale)</Label>
+                  <div className="relative">
+                    <Input 
+                      id="description" 
+                      value={formData.description} 
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+                      placeholder="Inserisci una descrizione del tag"
+                      className="pl-10"
+                    />
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </form>
             
@@ -427,7 +442,21 @@ export default function TagsPage() {
                   </div>
                 </div>
                 
- 
+                <div className="space-y-3">
+                  <Label htmlFor="edit-description" className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrizione (opzionale)</Label>
+                  <div className="relative">
+                    <Input 
+                      id="edit-description" 
+                      value={formData.description} 
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+                      placeholder="Inserisci una descrizione del tag"
+                      className="pl-10"
+                    />
+                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </form>
             

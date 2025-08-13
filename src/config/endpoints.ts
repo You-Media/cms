@@ -41,6 +41,11 @@ export const API_ENDPOINTS = {
     ADD: '/banners/add',
     DETAIL: (id: number | string) => `/banners/${id}`,
   },
+
+  // Articles endpoints (per ricerca nel form banner)
+  ARTICLES: {
+    FILTER: '/articles/filter',
+  },
 } as const
 
 // Utility function per costruire URL completi

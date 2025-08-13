@@ -11,9 +11,11 @@ import { ResultsHeader } from '@/components/table/ResultsHeader'
 import { PaginationBar } from '@/components/table/PaginationBar'
 import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
 import { toast } from 'sonner'
-import { ApiError } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
+import { API_ENDPOINTS } from '@/config/endpoints'
 import type { Banner, BannerModel, BannerPosition, BannerStatus } from '@/types/banners'
 import { useBanners } from '@/hooks/use-banners'
+import type { FilterBannersResponse } from '@/types/banners'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -190,6 +192,34 @@ export default function BannersPage() {
     )
   }
 
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<Banner | null>(null)
+  const [conflictBanner, setConflictBanner] = useState<Banner | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+
+  async function findPublishedConflict(target: Banner): Promise<Banner | null> {
+    try {
+      const qs = new URLSearchParams()
+      qs.append('status', 'Active')
+      qs.append('model', target.model)
+      qs.append('position', target.position)
+      qs.append('per_page', '50')
+      qs.append('page', '1')
+      const res = await api.get<FilterBannersResponse>(`${API_ENDPOINTS.BANNERS.FILTER}?${qs.toString()}`)
+      const payload = res.data
+      const list: Banner[] = Array.isArray(payload.data) ? payload.data : []
+      const sameSlot = list.find((b: Banner) => {
+        const sameOrder = b.order === target.order
+        const sameModelId = target.model === 'Home' ? true : (b.model_id ?? null) === (target.model_id ?? null)
+        return sameOrder && sameModelId
+      })
+      if (sameSlot && sameSlot.id !== target.id) return sameSlot
+      return null
+    } catch {
+      return null
+    }
+  }
+
   function RowActions({ banner }: { banner: Banner }) {
     const [open, setOpen] = useState(false)
     const menuRef = useRef<HTMLDivElement | null>(null)
@@ -233,6 +263,13 @@ export default function BannersPage() {
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={async () => {
                       setOpen(false)
+                      const conflict = await findPublishedConflict(banner)
+                      if (conflict) {
+                        setConfirmTarget(banner)
+                        setConflictBanner(conflict)
+                        setConfirmOpen(true)
+                        return
+                      }
                       try {
                         await updateBannerStatus(banner.id, 'Active')
                         toast.success('Banner pubblicato')
@@ -692,6 +729,59 @@ export default function BannersPage() {
         onPrev={() => setPage(Math.max(1, page - 1))}
         onNext={() => setPage(Math.min(totalPages, page + 1))}
       />
+
+      {confirmOpen && confirmTarget && conflictBanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Conferma pubblicazione</h2>
+                <p className="text-xs text-gray-500">Esiste già un banner attivo nello stesso slot. Attivando il nuovo banner il precedente verrà aggiornato con lo stato inattivo.</p>
+              </div>
+              <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" onClick={() => setConfirmOpen(false)} aria-label="Chiudi">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-gray-700 dark:text-gray-300">Slot: {conflictBanner.model} • Posizione: {POSITION_LABEL[conflictBanner.position]} • Ordine: {conflictBanner.order}</div>
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+                  <img src={conflictBanner.banner_url} alt={`banner-${conflictBanner.id}`} className="max-h-full max-w-full object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{conflictBanner.model_title || '-'}</div>
+                  <div className="text-xs text-gray-500">ID: {conflictBanner.id} • Autore: {conflictBanner.createdBy?.name || '-'}</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Annulla</Button>
+              <Button
+                onClick={async () => {
+                  if (!confirmTarget) return
+                  setConfirmLoading(true)
+                  try {
+                    await updateBannerStatus(confirmTarget.id, 'Active')
+                    toast.success('Banner pubblicato e sostituito')
+                    setConfirmOpen(false)
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  } finally {
+                    setConfirmLoading(false)
+                  }
+                }}
+                disabled={confirmLoading}
+              >
+                {confirmLoading ? 'Pubblicazione...' : 'Conferma pubblicazione'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

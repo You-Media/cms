@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
-import { api, ApiError } from '@/lib/api'
-import { toast } from 'sonner'
+import { api } from '@/lib/api'
 import { Tag, CreateTagRequest, UpdateTagRequest } from '@/types/tags'
 
 export function useTags() {
@@ -59,11 +58,6 @@ export function useTags() {
         setTotalPages(1)
       }
     } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 500) {
-          toast.error('Qualcosa è andato storto. Riprova più tardi.')
-        }
-      }
       console.error('Errore nel recupero dei tag:', error)
       setTags([])
       setTotal(0)
@@ -82,9 +76,6 @@ export function useTags() {
       await fetchTags(currentPage, undefined, perPage)
       return true
     } catch (error) {
-      if (error instanceof ApiError && error.status === 500) {
-        toast.error('Qualcosa è andato storto. Riprova più tardi.')
-      }
       console.error('Errore nella creazione del tag:', error)
       throw error
     }
@@ -94,13 +85,10 @@ export function useTags() {
     try {
       // Backend usa title/slug. Mappiamo name -> title
       const payload: { title: string; slug?: string | null } = { title: tagData.name }
-      await api.patch(`/tags/${id}`, payload)
+      await api.put(`/tags/${id}`, payload)
       await fetchTags(currentPage, undefined, perPage)
       return true
     } catch (error) {
-      if (error instanceof ApiError && error.status === 500) {
-        toast.error('Qualcosa è andato storto. Riprova più tardi.')
-      }
       console.error('Errore nell\'aggiornamento del tag:', error)
       throw error
     }
@@ -112,9 +100,6 @@ export function useTags() {
       await fetchTags(currentPage, undefined, perPage)
       return true
     } catch (error) {
-      if (error instanceof ApiError && error.status === 500) {
-        toast.error('Qualcosa è andato storto. Riprova più tardi.')
-      }
       console.error('Errore nell\'eliminazione del tag:', error)
       throw error
     }
