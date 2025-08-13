@@ -121,6 +121,7 @@ export default function BannersPage() {
     Home: 'Home',
     Article: 'Articolo',
     Category: 'Categoria',
+    Search: 'Ricerca',
   }
 
   const formatDate = (isoString: string): string => {
@@ -155,6 +156,12 @@ export default function BannersPage() {
         return (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h4a1 1 0 001-1v-4h4v4a1 1 0 001 1h4a1 1 0 001-1V10" />
+          </svg>
+        )
+      case 'Search':
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 110-16 8 8 0 010 16z" />
           </svg>
         )
       case 'Article':
@@ -210,7 +217,7 @@ export default function BannersPage() {
       const list: Banner[] = Array.isArray(payload.data) ? payload.data : []
       const sameSlot = list.find((b: Banner) => {
         const sameOrder = b.order === target.order
-        const sameModelId = target.model === 'Home' ? true : (b.model_id ?? null) === (target.model_id ?? null)
+        const sameModelId = (target.model === 'Home' || target.model === 'Search') ? true : (b.model_id ?? null) === (target.model_id ?? null)
         return sameOrder && sameModelId
       })
       if (sameSlot && sameSlot.id !== target.id) return sameSlot
@@ -341,19 +348,21 @@ export default function BannersPage() {
                 <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
               </>
             )}
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-              onClick={() => {
-                window.open(banner.banner_preview, '_blank')
-                setOpen(false)
-              }}
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0 0L10 21l-7-7L14 3z" />
-              </svg>
-              Vedi su Editoria
-            </button>
+            {banner.banner_preview ? (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => {
+                  window.open(banner.banner_preview, '_blank')
+                  setOpen(false)
+                }}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0 0L10 21l-7-7L14 3z" />
+                </svg>
+                Vedi su Editoria
+              </button>
+            ) : null}
             {canEdit && (
               <Link
                 href={APP_ROUTES.DASHBOARD.BANNERS.EDIT(banner.id)}
@@ -408,17 +417,23 @@ export default function BannersPage() {
         const [open, setOpen] = useState(false)
         return (
           <>
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="inline-block focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
-              title="Ingrandisci anteprima"
-            >
+            {b.banner_preview ? (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-block focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+                title="Ingrandisci anteprima"
+              >
+                <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+                  <img src={b.banner_url} alt={`banner-${b.id}`} className="max-h-full max-w-full object-contain" />
+                </div>
+              </button>
+            ) : (
               <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
                 <img src={b.banner_url} alt={`banner-${b.id}`} className="max-h-full max-w-full object-contain" />
               </div>
-            </button>
-            {open && <PreviewModal src={b.banner_url} onClose={() => setOpen(false)} />}
+            )}
+            {b.banner_preview && open && <PreviewModal src={b.banner_url} onClose={() => setOpen(false)} />}
           </>
         )
       },
@@ -563,6 +578,9 @@ export default function BannersPage() {
               </SelectItem>
               <SelectItem value="Category">
                 <div className="flex items-center gap-2"><ModelIcon model={'Category'} /> Categoria</div>
+              </SelectItem>
+              <SelectItem value="Search">
+                <div className="flex items-center gap-2"><ModelIcon model={'Search'} /> Ricerca</div>
               </SelectItem>
             </SelectContent>
           </Select>

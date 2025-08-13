@@ -1,5 +1,5 @@
 export type BannerStatus = 'Draft' | 'Active' | 'Inactive'
-export type BannerModel = 'Home' | 'Article' | 'Category'
+export type BannerModel = 'Home' | 'Article' | 'Category' | 'Search'
 export type BannerPosition = 'center' | 'right' | 'left'
 
 export interface BannerCreator {

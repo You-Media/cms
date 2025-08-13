@@ -11,7 +11,7 @@ import { API_ENDPOINTS } from '@/config/endpoints'
 import { api, ApiError } from '@/lib/api'
 import type { Banner, BannerModel, BannerPosition } from '@/types/banners'
 import { toast } from 'sonner'
-import { getAllowedPositions, getRequiredOrder, getRequiredImage, getAllowedOrders } from '@/config/banner-constraints'
+import { getAllowedPositions, getRequiredOrder, getRequiredImage, getAllowedOrders, getRequiredImageFor } from '@/config/banner-constraints'
 import ImageCropperModal from '@/components/forms/image-cropper-modal'
 import ArticleSelectModal from '@/components/forms/article-select-modal'
 import CategorySelectModal from '@/components/forms/category-select-modal'
@@ -57,6 +57,7 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
   const [selectedCategoryTitle, setSelectedCategoryTitle] = useState<string | null>(null)
   const [openArticleModal, setOpenArticleModal] = useState(false)
   const [openCategoryModal, setOpenCategoryModal] = useState(false)
+  const skipNextModelResetRef = useRef(false)
   const isImageLocked = (!model || !position) && !(imagePreview || initialBanner?.banner_url)
   const [openCropper, setOpenCropper] = useState(false)
   const [pendingImageURL, setPendingImageURL] = useState<string | null>(null)
@@ -67,6 +68,8 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
   useEffect(() => {
     const src = initialBanner || null
     if (src) {
+      // Prevent the subsequent model change effect from clearing prefilled selections
+      skipNextModelResetRef.current = true
       setModel(src.model)
       setModelId(src.model_id != null ? Number(src.model_id) : '')
       setPosition(src.position)
@@ -83,37 +86,77 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
     }
   }, [initialBanner])
 
+  // On edit: if model title is missing, fetch it so the selection summary looks like after a modal pick
+  useEffect(() => {
+    let aborted = false
+    async function fetchTitlesIfMissing() {
+      const src = initialBanner || null
+      if (!src) return
+      // Category detail (has dedicated endpoint)
+      if (src.model === 'Category' && !selectedCategoryTitle) {
+        const id = (modelId || src.model_id) as number | ''
+        if (id) {
+          try {
+            const res = await api.get<{ id: number; title: string }>(API_ENDPOINTS.CATEGORIES.DETAIL(id))
+            if (!aborted) setSelectedCategoryTitle((res as any)?.data?.title || (res as any)?.title || null)
+          } catch {}
+        }
+      }
+      // Article best-effort via filter
+      if (src.model === 'Article' && !selectedArticleTitle) {
+        const id = (modelId || src.model_id) as number | ''
+        if (id) {
+          try {
+            const qs = new URLSearchParams()
+            qs.append('search', String(id))
+            qs.append('per_page', '1')
+            const res = await api.get<any>(`${API_ENDPOINTS.ARTICLES.FILTER}?${qs.toString()}`)
+            const d = res?.data
+            let title: string | null = null
+            if (Array.isArray(d) && d[0]) title = d[0]?.title ?? null
+            else if (Array.isArray(d?.data) && d.data[0]) title = d.data[0]?.title ?? null
+            else if (Array.isArray(d?.data?.data) && d.data.data[0]) title = d.data.data[0]?.title ?? null
+            if (!aborted && title) setSelectedArticleTitle(title)
+          } catch {}
+        }
+      }
+    }
+    void fetchTitlesIfMissing()
+    return () => { aborted = true }
+  }, [initialBanner, modelId, selectedCategoryTitle, selectedArticleTitle])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     const hasImage = Boolean(imageFile || imagePreview || initialBanner?.banner_url)
     // Usa l'ID selezionato oppure quello già presente in modifica
-    const effectiveModelId = model !== 'Home' ? (modelId || initialBanner?.model_id || '') : ''
+    const isModelIdRequired = model !== 'Home' && model !== 'Search'
+    const effectiveModelId = isModelIdRequired ? (modelId || '') : ''
     if (!model || !position || !order || !link || !hasImage) {
       toast.error('Compila tutti i campi obbligatori')
       return
     }
 
-    if (model !== 'Home' && !effectiveModelId) {
+    if (isModelIdRequired && !effectiveModelId) {
       toast.error('Seleziona un elemento per il modello scelto')
       return
     }
 
     const formData = new FormData()
     // Build FormData depending on create/edit and include only changed fields for edit
-    if (isEdit && initialBanner) {
+      if (isEdit && initialBanner) {
       formData.append('_method', 'PUT')
       if (initialBanner.model !== model) formData.append('model', model)
-      const initialModelIdNum = initialBanner.model_id ?? 0
-      const nextModelIdNum = model === 'Home' ? 0 : Number(effectiveModelId || 0)
+        const initialModelIdNum = initialBanner.model_id ?? 0
+        const nextModelIdNum = (model === 'Home' || model === 'Search') ? 0 : Number(effectiveModelId || 0)
       if (initialModelIdNum !== nextModelIdNum) formData.append('model_id', String(nextModelIdNum))
       if (initialBanner.position !== position) formData.append('position', position)
       if (initialBanner.order !== order) formData.append('order', String(order))
       if (initialBanner.link !== link) formData.append('link', link)
       if (imageFile) formData.append('image', imageFile)
-    } else {
+      } else {
       formData.append('model', model)
-      formData.append('model_id', String(effectiveModelId || 0))
+        formData.append('model_id', String(effectiveModelId || 0))
       formData.append('position', position)
       formData.append('order', String(order))
       formData.append('link', link)
@@ -164,11 +207,15 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
     )
   }
 
-  // Effetti: reset stato selezioni quando cambia il modello (salta il primo set iniziale)
+  // Effetti: reset stato selezioni quando cambia il modello (salta il prefill iniziale)
   const hasInitializedModelRef = useRef(false)
   useEffect(() => {
     if (!hasInitializedModelRef.current) {
       hasInitializedModelRef.current = true
+      return
+    }
+    if (skipNextModelResetRef.current) {
+      skipNextModelResetRef.current = false
       return
     }
     setModelId('')
@@ -196,6 +243,12 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
         return (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h4a1 1 0 001-1v-4h4v4a1 1 0 001 1h4a1 1 0 001-1V10" />
+          </svg>
+        )
+      case 'Search':
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 110-16 8 8 0 010 16z" />
           </svg>
         )
       case 'Article':
@@ -244,6 +297,9 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                     <SelectItem value="Home">
                       <div className="flex items-center gap-2"><ModelIcon model={'Home'} /> Home</div>
                     </SelectItem>
+                    <SelectItem value="Search">
+                      <div className="flex items-center gap-2"><ModelIcon model={'Search'} /> Ricerca</div>
+                    </SelectItem>
                     <SelectItem value="Category">
                       <div className="flex items-center gap-2"><ModelIcon model={'Category'} /> Categoria</div>
                     </SelectItem>
@@ -252,18 +308,14 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">Home non richiede nessuna associazione. Articolo e Categoria richiedono una selezione.</p>
+                 <p className="text-xs text-gray-500">Home e Ricerca non richiedono associazioni. Articolo e Categoria richiedono una selezione.</p>
               </div>
-              {model && model !== 'Home' && (
+              {model && model !== 'Home' && model !== 'Search' && (
                 <div className="space-y-2">
                   <Label>ID Modello (avanzato)</Label>
                   <Input
                     type="number"
-                    value={
-                      modelId === ''
-                        ? (initialBanner?.model_id != null ? String(initialBanner.model_id) : '')
-                        : String(modelId)
-                    }
+                    value={String(modelId || '')}
                     onChange={(e) => setModelId(Number(e.target.value) || '')}
                     placeholder="Es. 123"
                   />
@@ -276,10 +328,10 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                 <Label className="block">Articolo</Label>
                 {modelId ? (
                   <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                    <div className="text-sm">Selezionato: <span className="font-medium">{selectedArticleTitle || initialBanner?.model_title || '—'}</span> (ID: {modelId || initialBanner?.model_id || '—'})</div>
+                    <div className="text-sm">Selezionato: <span className="font-medium">{selectedArticleTitle || '—'}</span> (ID: {modelId || '—'})</div>
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="secondary" onClick={() => setOpenArticleModal(true)}>Cambia</Button>
-                      <Button type="button" variant="secondary" onClick={() => { setModelId(''); setSelectedArticleTitle(null) }}>Rimuovi</Button>
+                      <Button type="button" variant="default" onClick={() => setOpenArticleModal(true)}>Cambia</Button>
+                      <Button type="button" variant="destructive" onClick={() => { setModelId(''); setSelectedArticleTitle(null) }}>Rimuovi</Button>
                     </div>
                   </div>
                 ) : (
@@ -292,10 +344,10 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                 <Label className="block">Categoria</Label>
                 {modelId ? (
                   <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                    <div className="text-sm">Selezionato: <span className="font-medium">{selectedCategoryTitle || initialBanner?.model_title || '—'}</span> (ID: {modelId || initialBanner?.model_id || '—'})</div>
+                    <div className="text-sm">Selezionato: <span className="font-medium">{selectedCategoryTitle || '—'}</span> (ID: {modelId || '—'})</div>
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="secondary" onClick={() => setOpenCategoryModal(true)}>Cambia</Button>
-                      <Button type="button" variant="secondary" onClick={() => { setModelId(''); setSelectedCategoryTitle(null) }}>Rimuovi</Button>
+                      <Button type="button" variant="default" onClick={() => setOpenCategoryModal(true)}>Cambia</Button>
+                      <Button type="button" variant="destructive" onClick={() => { setModelId(''); setSelectedCategoryTitle(null) }}>Rimuovi</Button>
                     </div>
                   </div>
                 ) : (
@@ -349,9 +401,9 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                 ) : (
                   <Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value) || '')} placeholder="Es. 1" disabled={getRequiredOrder(model) !== null} />
                 )}
-                {getRequiredOrder(model) !== null ? (
-                  <p className="text-xs text-gray-500">Per {model} l'ordine è impostato automaticamente a {getRequiredOrder(model)}.</p>
-                ) : getAllowedOrders(model) ? (
+                 {getRequiredOrder(model) !== null ? (
+                   <p className="text-xs text-gray-500">Per {model} l'ordine è impostato automaticamente a {getRequiredOrder(model)}.</p>
+                 ) : getAllowedOrders(model) ? (
                   <p className="text-xs text-gray-500">Per {model} puoi scegliere tra {getAllowedOrders(model)?.join(', ')}.</p>
                 ) : (
                   <p className="text-xs text-gray-500">I numeri più piccoli vengono mostrati prima.</p>
@@ -375,8 +427,19 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold">Immagine</h3>
-              {imagePreview && (
-                <Button type="button" variant="secondary" size="sm" onClick={() => { setImageFile(null); setImagePreview(null) }}>Rimuovi</Button>
+              {imageFile && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setImageFile(null)
+                    setImagePreview(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                >
+                  Rimuovi
+                </Button>
               )}
             </div>
             <div className="relative">
@@ -405,7 +468,7 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                 {imagePreview || initialBanner?.banner_url ? (
                   <img src={imagePreview || (initialBanner?.banner_url as string)} alt="anteprima" className="max-h-full max-w-full object-contain" />
                   ) : (
-                    <div className="text-xs text-gray-500">{model && position ? (getRequiredImage(model) ? `Carica immagine ${getRequiredImage(model)!.width}x${getRequiredImage(model)!.height}` : 'Trascina o seleziona un’immagine') : 'Seleziona prima modello e posizione'}</div>
+                    <div className="text-xs text-gray-500">{model && position ? (getRequiredImageFor(model, position as BannerPosition) ? `Carica immagine ${getRequiredImageFor(model, position as BannerPosition)!.width}x${getRequiredImageFor(model, position as BannerPosition)!.height}` : 'Trascina o seleziona un’immagine') : 'Seleziona prima modello e posizione'}</div>
                   )}
                 </button>
                 <div className="space-y-2">
@@ -420,7 +483,7 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                         e.currentTarget.value = ''
                         return
                       }
-                      const req = getRequiredImage(model)
+                      const req = getRequiredImageFor(model, position as BannerPosition)
                       if (req) {
                       const isValid = await new Promise<boolean>((resolve) => {
                           const img = new Image()
@@ -450,12 +513,12 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                       const previewUrl = URL.createObjectURL(file)
                       setImagePreview(previewUrl)
                     }}
-                    className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/20 dark:file:text-amber-300"
+                    className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-600 file:text-white dark:file:bg-amber-600 dark:file:text-white"
                   required={!(imagePreview || initialBanner?.banner_url)}
                     disabled={isImageLocked}
                   ref={fileInputRef}
                   />
-                  <p className="text-xs text-gray-500">{getRequiredImage(model) ? `Richiesto: ${getRequiredImage(model)!.width}x${getRequiredImage(model)!.height}` : 'Consiglio: usa immagini ottimizzate.'}</p>
+                    <p className="text-xs text-gray-500">{getRequiredImageFor(model, position as BannerPosition) ? `Richiesto: ${getRequiredImageFor(model, position as BannerPosition)!.width}x${getRequiredImageFor(model, position as BannerPosition)!.height}` : 'Consiglio: usa immagini ottimizzate.'}</p>
                 </div>
               </div>
             </div>
@@ -476,9 +539,9 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                     {model ? <ModelIcon model={model as BannerModel} /> : null}
                     <div className="text-sm font-medium">{model || '-'}</div>
                   </div>
-                  {model !== 'Home' && (
-                    <div className="text-xs text-gray-500">Target ID: {modelId || initialBanner?.model_id || '-'}</div>
-                  )}
+                   {model !== 'Home' && model !== 'Search' && (
+                    <div className="text-xs text-gray-500">Target ID: {modelId || '-'}</div>
+                   )}
                   {model === 'Article' && (selectedArticleTitle || initialBanner?.model_title) && (
                     <div className="text-xs text-gray-500">Articolo: {selectedArticleTitle || initialBanner?.model_title}</div>
                   )}
@@ -538,8 +601,8 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
           if (fileInputRef.current) fileInputRef.current.value = ''
         }}
         imageURL={pendingImageURL || ''}
-        requiredWidth={getRequiredImage(model)?.width || 1440}
-        requiredHeight={getRequiredImage(model)?.height || 90}
+        requiredWidth={getRequiredImageFor(model, position as BannerPosition)?.width || 1440}
+        requiredHeight={getRequiredImageFor(model, position as BannerPosition)?.height || 90}
         onCropped={(blob, previewURL) => {
           const baseName = pendingOriginalName || 'image'
           const filename = `cropped_${baseName}`
