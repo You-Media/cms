@@ -53,7 +53,7 @@ export function buildSidebarNavigation(
     }
   }
 
-  if (selectedSite === 'editoria' && hasAnyRole([ 'Editor', 'EditorInChief','AdvertisingManager'])) {
+  if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'EditorInChief', 'AdvertisingManager'])) {
     // Mostra banner se l'utente ha il permesso di visualizzarli
     if (hasPermission('view_banners')) {
       items.push({
@@ -62,6 +62,42 @@ export function buildSidebarNavigation(
         icon: (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h8" />
+          </svg>
+        ),
+      })
+    }
+  }
+
+  // Utenti (solo sito 'editoria')
+  // Regola: mostrare se il ruolo è tra Admin, Publisher, EditorInChief e
+  // possiede almeno uno dei permessi specifici per quel ruolo
+  if (selectedSite === 'editoria' && hasAnyRole(['Admin', 'Publisher', 'EditorInChief'])) {
+    let canSeeUsers = false
+    if (!canSeeUsers && hasAnyRole(['Admin'])) {
+      canSeeUsers =
+        hasPermission('manage_publishers') ||
+        hasPermission('manage_editors_in_chief') ||
+        hasPermission('manage_advertising_managers')
+    }
+    if (!canSeeUsers && hasAnyRole(['Publisher'])) {
+      canSeeUsers =
+        hasPermission('manage_editors_in_chief') ||
+        hasPermission('manage_advertising_managers')
+    }
+    if (!canSeeUsers && hasAnyRole(['EditorInChief'])) {
+      canSeeUsers = hasPermission('manage_journalists')
+    }
+
+    if (canSeeUsers) {
+      items.push({
+        name: 'Utenti',
+        href: APP_ROUTES.DASHBOARD.USERS.LIST,
+        icon: (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="9" cy="7" r="4" strokeWidth={2} />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 21v-2a4 4 0 00-3-3.87" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3.13a4 4 0 010 7.75" />
           </svg>
         ),
       })

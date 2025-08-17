@@ -1,4 +1,5 @@
 import { API_ENDPOINTS, buildApiUrl } from '@/config/endpoints';
+import { toast } from 'sonner'
 
 class ApiClient {
   private baseURL: string;
@@ -19,7 +20,7 @@ class ApiClient {
     endpoint: string,
     data?: any,
     headers?: Record<string, string>,
-    options?: { skipAuthRefresh?: boolean }
+    options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
@@ -68,17 +69,50 @@ class ApiClient {
           }
         }
 
-        let errorData = {};
+        let errorData: any = {};
         let serverMessage = '';
         
         try {
           errorData = await response.json();
-          serverMessage = (errorData as any).message || (errorData as any).error || (errorData as any).detail;
+          // Costruisci un messaggio leggibile per 422 usando gli errori campo->messaggi
+          if (response.status === 422 && errorData && typeof errorData === 'object' && errorData.errors) {
+            try {
+              const allMsgs = Object.values(errorData.errors as Record<string, string[] | string>)
+                .flat()
+                .filter(Boolean) as string[]
+              if (allMsgs.length > 0) {
+                serverMessage = allMsgs.join('\n')
+              }
+            } catch {}
+          }
+          if (!serverMessage) {
+            serverMessage = (errorData as any).message || (errorData as any).error || (errorData as any).detail;
+          }
         } catch (parseError) {
           console.warn('Failed to parse error response:', parseError);
         }
         
-        throw new ApiError(response.status, serverMessage);
+        // Toast globale per 422 - Richiesta non valida
+        if (response.status === 422 && !options?.suppressGlobalToasts) {
+          try {
+            toast.error('Richiesta non valida')
+          } catch {}
+        }
+        // Toast globale per 403 - Permessi insufficienti
+        if (response.status === 403 && !options?.suppressGlobalToasts) {
+          try {
+            toast.error('Non hai i permessi per questa operazione')
+          } catch {}
+        }
+        // Toast globale per 5xx - Errore server
+        if (response.status >= 500 && response.status < 600 && !options?.suppressGlobalToasts) {
+          try {
+            toast.error('Qualcosa è andato storto, riprova più tardi')
+          } catch {}
+        }
+        // Includi dettagli errori per 422 (mappa campo -> messaggi)
+        const fieldErrors = (response.status === 422 && errorData && typeof errorData === 'object') ? (errorData as any).errors : undefined
+        throw new ApiError(response.status, serverMessage, fieldErrors);
       }
 
       return await response.json();
@@ -89,31 +123,37 @@ class ApiClient {
       
       // Gestione errori di rete più specifica
       if (error instanceof TypeError && error.message.includes('fetch')) {
+        try {
+          if (!options?.suppressGlobalToasts) toast.error('Qualcosa è andato storto, riprova più tardi')
+        } catch {}
         throw new ApiError(0, 'Errore di connessione - Verifica la connessione internet');
       }
       
+      try {
+        if (!options?.suppressGlobalToasts) toast.error('Qualcosa è andato storto, riprova più tardi')
+      } catch {}
       throw new ApiError(0, error instanceof Error ? error.message : 'Errore di rete');
     }
   }
 
-  async get<T>(endpoint: string, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>('GET', endpoint, undefined, headers);
+  async get<T>(endpoint: string, headers?: Record<string, string>, options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }): Promise<T> {
+    return this.request<T>('GET', endpoint, undefined, headers, options);
   }
 
-  async post<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>('POST', endpoint, data, headers);
+  async post<T>(endpoint: string, data?: any, headers?: Record<string, string>, options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }): Promise<T> {
+    return this.request<T>('POST', endpoint, data, headers, options);
   }
 
-  async put<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>('PUT', endpoint, data, headers);
+  async put<T>(endpoint: string, data?: any, headers?: Record<string, string>, options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }): Promise<T> {
+    return this.request<T>('PUT', endpoint, data, headers, options);
   }
 
-  async delete<T>(endpoint: string, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>('DELETE', endpoint, undefined, headers);
+  async delete<T>(endpoint: string, headers?: Record<string, string>, options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }): Promise<T> {
+    return this.request<T>('DELETE', endpoint, undefined, headers, options);
   }
 
-  async patch<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>('PATCH', endpoint, data, headers);
+  async patch<T>(endpoint: string, data?: any, headers?: Record<string, string>, options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }): Promise<T> {
+    return this.request<T>('PATCH', endpoint, data, headers, options);
   }
 
   setToken(token: string) {
@@ -241,7 +281,7 @@ class ApiClient {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message?: string) {
+  constructor(public status: number, message?: string, public errors?: Record<string, string[]>) {
     // Passa il messaggio del server per la mappatura specifica
     super(ApiError.getErrorMessage(status, message));
     this.name = 'ApiError';
@@ -274,7 +314,7 @@ export class ApiError extends Error {
       403: 'Accesso negato',
       404: 'Risorsa non trovata',
       409: 'Conflitto - La risorsa esiste già',
-      422: 'Dati non validi - Verifica i campi',
+      422: 'Richiesta non valida',
       429: 'Troppe richieste - Riprova più tardi',
       500: 'Errore interno del server',
       502: 'Errore del gateway',
@@ -318,7 +358,7 @@ export class AuthError extends Error {
       403: 'Accesso negato',
       404: 'Utente non trovato', // Mappa 404 a "Utente non trovato" per l'auth
       409: 'Conflitto - La risorsa esiste già',
-      422: 'Dati non validi - Verifica i campi',
+      422: 'Richiesta non valida',
       429: 'Troppe richieste - Riprova più tardi',
       500: 'Errore interno del server',
       502: 'Errore del gateway',

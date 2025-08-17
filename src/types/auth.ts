@@ -32,7 +32,7 @@ export interface User {
   created_at: string | null;
   updated_at: string | null;
   roles: string[];
-  permissions: string[];
+  permissions: Array<string | PermissionItem>;
 }
 
 export type UserRole = 'super_admin' | 'site_admin' | 'editor' | 'viewer';
@@ -43,6 +43,13 @@ export interface Permission {
   scope: 'global' | 'site' | 'own';
   siteIds?: string[];
   conditions?: PermissionCondition[];
+}
+
+// Struttura permesso lato API per /me e /users
+export interface PermissionItem {
+  name: string;
+  display_name: string;
+  description?: string;
 }
 
 export interface PermissionCondition {

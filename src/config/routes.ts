@@ -17,6 +17,11 @@ export const APP_ROUTES = {
   // Dashboard routes (utilizzate)
   DASHBOARD: {
     HOME: '/dashboard',
+    USERS: {
+      LIST: '/dashboard/users',
+      NEW: '/dashboard/users/new',
+      EDIT: (id: string | number) => `/dashboard/users/${id}`,
+    },
     CATEGORIES: {
       LIST: '/dashboard/categories',
       TREE: '/dashboard/categories/tree',
@@ -155,13 +160,21 @@ export function isValidRoute(pathname: string): boolean {
 // Route permissions - maps routes to required permissions
 export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/sites': ['manage_sites'],
-  '/dashboard/users': ['manage_users'],
+  // Accesso alla gestione utenti consentito se l'utente possiede ALMENO uno dei permessi specifici
+  // (la lista rappresenta una condizione OR)
+  '/dashboard/users': [
+    'manage_publishers',
+    'manage_editors_in_chief',
+    'manage_advertising_managers',
+    'manage_journalists',
+  ],
   '/dashboard/roles': ['manage_roles'],
   '/dashboard/settings': ['manage_settings'],
   '/dashboard/categories': ['read_categories'],
   '/dashboard/tags': ['read_tags'],
   '/dashboard/banners': ['view_banners'],
   '/dashboard/banners/new': ['create_banner'],
+  '/dashboard/users/new': ['manage_users'],
 }
 
 // Check if user has permission for a route

@@ -42,6 +42,17 @@ export const API_ENDPOINTS = {
     DETAIL: (id: number | string) => `/banners/${id}`,
   },
 
+  // Users endpoints
+  USERS: {
+    SEARCH: '/users/search',
+    PERMISSIONS_BY_ROLE: '/permissions/byRoles',
+    BLOCK_PERMISSIONS: (id: number | string) => `/users/${id}/permissions/block`,
+    UNBLOCK_PERMISSIONS: (id: number | string) => `/users/${id}/permissions/unblock`,
+    DELETE: (id: number | string) => `/users/${id}`,
+    CREATE: '/users',
+    DETAIL: (id: number | string) => `/users/${id}`,
+  },
+
   // Articles endpoints (per ricerca nel form banner)
   ARTICLES: {
     FILTER: '/articles/filter',

@@ -151,7 +151,7 @@ export default function TagsPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2}>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2} submitUseEmptyLabel={true}>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">

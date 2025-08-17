@@ -32,7 +32,7 @@ export function useAuth() {
     error,
     isAuthenticated: !!(user && token),
     isAdmin: user?.roles.includes('Admin') || false,
-    userPermissions: user?.permissions || [],
+    userPermissions: (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean),
     userRoles: user?.roles || [],
     fullName: user?.profile.full_name || '',
     email: user?.email || '',
@@ -57,7 +57,7 @@ export function useAuth() {
       // superadmin override
       const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
       if (normalizedRoles.includes('superadmin')) return true
-      const perms = user?.permissions || []
+      const perms = (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean)
       const target = normalizePermission(permission)
       return perms.map(normalizePermission).includes(target)
     },
@@ -65,7 +65,7 @@ export function useAuth() {
       const roles = user?.roles || []
       const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
       if (normalizedRoles.includes('superadmin')) return true
-      const perms = (user?.permissions || []).map(normalizePermission)
+      const perms = (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean).map(normalizePermission)
       const targets = permissions.map(normalizePermission)
       return targets.some((p) => perms.includes(p))
     },
@@ -74,7 +74,7 @@ export function useAuth() {
       const roles = user?.roles || []
       const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
       if (normalizedRoles.includes('superadmin')) return true
-      const perms = user?.permissions || []
+      const perms = (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean)
       const target = normalizePermission('manage_categories')
       return perms.map(normalizePermission).includes(target)
     })(),
@@ -82,7 +82,7 @@ export function useAuth() {
       const roles = user?.roles || []
       const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
       if (normalizedRoles.includes('superadmin')) return true
-      const perms = user?.permissions || []
+      const perms = (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean)
       const target = normalizePermission('manage_subcategories')
       return perms.map(normalizePermission).includes(target)
     })(),
@@ -90,7 +90,7 @@ export function useAuth() {
       const roles = user?.roles || []
       const normalizedRoles = roles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
       if (normalizedRoles.includes('superadmin')) return true
-      const perms = user?.permissions || []
+      const perms = (user?.permissions || []).map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean)
       const target = normalizePermission('manage_tags')
       return perms.map(normalizePermission).includes(target)
     })(),
