@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { useUsers, type UserRoleFilter, fetchPermissionsByRole, blockUserPermissions, unblockUserPermissions, deleteUser, createUser, type RolePermissionItem, fetchUserDetail } from '@/hooks/use-users'
+import { useUsers, type UserRoleFilter, fetchPermissionsByRole, blockUserPermissions, unblockUserPermissions, deleteUser, type RolePermissionItem, fetchUserDetail } from '@/hooks/use-users'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { APP_ROUTES } from '@/config/routes'
@@ -72,6 +72,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter | ''>('')
   const ALL_VALUE = '__ALL__'
   const lastParamsRef = useRef<string>('')
+  const prevPerPageRef = useRef<number>(perPage)
   const [permModalOpen, setPermModalOpen] = useState(false)
   const [permUser, setPermUser] = useState<{ id: number; fullName: string; permissions: string[]; roles: string[] } | null>(null)
   const [permRecommended, setPermRecommended] = useState<RolePermissionItem[]>([])
@@ -79,17 +80,7 @@ export default function UsersPage() {
   const [confirmOp, setConfirmOp] = useState<{ permission: string; label: string; type: 'block' | 'unblock' } | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string; roles: string[] } | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
-  const [newUser, setNewUser] = useState<{ first_name: string; last_name: string; email: string; password: string; password_confirmation: string; roles: string[]; profile_photo?: File | null }>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-    roles: [],
-    profile_photo: null,
-  })
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const canGoPrev = useMemo(() => page > 1, [page])
   const canGoNext = useMemo(() => page < totalPages, [page, totalPages])
@@ -112,6 +103,19 @@ export default function UsersPage() {
     return Array.from(set)
   }, [hasAnyRole, isSuperAdmin])
 
+  // Se l'utente è SOLO EditorInChief, deve vedere/gestire solo Giornalisti
+  const isEditorInChiefOnly = useMemo(() => {
+    return hasAnyRole(['EditorInChief']) && !hasAnyRole(['Admin', 'Publisher']) && !isSuperAdmin
+  }, [hasAnyRole, isSuperAdmin])
+
+  // Forza il filtro ruolo su Giornalista quando è EditorInChief-only
+  useEffect(() => {
+    if (isEditorInChiefOnly) {
+      setRoleFilter('Journalist')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditorInChiefOnly])
+
   const roleLabelIt = (role: UserRoleFilter): string => {
     switch (role) {
       case 'EditorInChief':
@@ -132,7 +136,9 @@ export default function UsersPage() {
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     setPage(1)
-    const rolesParam = roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined)
+    const rolesParam = isEditorInChiefOnly
+      ? (['Journalist'] as UserRoleFilter[])
+      : (roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined))
     void searchUsers({
       page: 1,
       per_page: perPage,
@@ -141,12 +147,19 @@ export default function UsersPage() {
     })
   }
 
-  // Auto refresh su page/perPage
+  // Auto refresh su page/perPage con reset a pagina 1 quando cambia perPage
   useEffect(() => {
+    if (prevPerPageRef.current !== perPage) {
+      prevPerPageRef.current = perPage
+      setPage(1)
+      return
+    }
     const key = `${page}|${perPage}`
     if (lastParamsRef.current === key) return
     lastParamsRef.current = key
-    const rolesParam = roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined)
+    const rolesParam = isEditorInChiefOnly
+      ? (['Journalist'] as UserRoleFilter[])
+      : (roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined))
     void searchUsers({
       page,
       per_page: perPage,
@@ -156,7 +169,7 @@ export default function UsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
-  const columns: Array<DataTableColumn<{ id: number; fullName: string; email: string; createdAt: string | null; roles: string[]; permissions: string[]; profilePhoto?: string }>> = [
+  const columns: Array<DataTableColumn<{ id: number; fullName: string; email: string; createdAt: string | null; roles: string[]; permissions: string[]; profilePhoto?: string; articlesCount?: number }>> = [
     {
       key: 'id',
       header: (
@@ -183,16 +196,26 @@ export default function UsersPage() {
           <span>Utente</span>
         </div>
       ),
-      cell: (u) => (
-        <div className="flex items-center gap-3">
-          {u.profilePhoto ? (
-            <img src={u.profilePhoto} alt={u.fullName} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700" />
-          )}
-          <div className="text-sm font-medium text-gray-900 dark:text-white">{u.fullName || '-'}</div>
-        </div>
-      ),
+      cell: (u) => {
+        const rolesNorm = (u.roles || []).map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+        const isJournalist = rolesNorm.includes('journalist')
+        const count = typeof u.articlesCount === 'number' ? u.articlesCount : undefined
+        return (
+          <div className="flex items-center gap-3">
+            {u.profilePhoto ? (
+              <img src={u.profilePhoto} alt={u.fullName} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700" />
+            )}
+            <div className="text-sm text-gray-900 dark:text-white">
+              <div className="font-medium">{u.fullName || '-'}</div>
+              {isJournalist && typeof count === 'number' && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">Articoli: {count}</div>
+              )}
+            </div>
+          </div>
+        )
+      },
     },
     {
       key: 'email',
@@ -382,12 +405,14 @@ export default function UsersPage() {
         </div>
         <div className="flex flex-col justify-end h-full">
           <Label className="sr-only">Ruolo</Label>
-          <Select value={roleFilter || ALL_VALUE} onValueChange={(v) => setRoleFilter((v === ALL_VALUE ? '' : (v as UserRoleFilter)))}>
-            <SelectTrigger className="h-12">
+          <Select value={isEditorInChiefOnly ? 'Journalist' : (roleFilter || ALL_VALUE)} onValueChange={(v) => setRoleFilter((v === ALL_VALUE ? '' : (v as UserRoleFilter)))} disabled={isEditorInChiefOnly}>
+            <SelectTrigger className="h-12" disabled={isEditorInChiefOnly}>
               <SelectValue placeholder="Tutti" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_VALUE}>Tutti</SelectItem>
+              {!isEditorInChiefOnly && (
+                <SelectItem value={ALL_VALUE}>Tutti</SelectItem>
+              )}
               {allowedRoleOptions.map((r) => (
                 <SelectItem key={r} value={r}>{roleLabelIt(r)}</SelectItem>
               ))}
@@ -585,6 +610,8 @@ export default function UsersPage() {
                 const rawRoles = deleteConfirm.roles || []
                 const normalized = rawRoles.map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
                 const isEditorInChief = normalized.includes('editorinchief') || rawRoles.includes('EditorInChief') || rawRoles.includes('EDITOR_IN_CHIEF')
+                const isJournalist = normalized.includes('journalist') || rawRoles.includes('Journalist') || rawRoles.includes('JOURNALIST')
+                const isAdvertisingManager = normalized.includes('advertisingmanager') || rawRoles.includes('AdvertisingManager') || rawRoles.includes('ADVERTISING_MANAGER')
                 if (isEditorInChief) {
                   return (
                     <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs">
@@ -593,31 +620,60 @@ export default function UsersPage() {
                     </div>
                   )
                 }
+                if (isJournalist) {
+                  return (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs">
+                      <svg className="h-4 w-4 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                      <span>( Tutti gli articoli di questo giornalista saranno associati all'utente <strong>editoria@editoriaresponsabile.com</strong> )</span>
+                    </div>
+                  )
+                }
+                if (isAdvertisingManager) {
+                  return (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs">
+                      <svg className="h-4 w-4 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                      <span>( Tutti  i banner creati da questo manager saranno associati all'utente <strong>editoria@editoriaresponsabile.com</strong> )</span>
+                    </div>
+                  )
+                }
                 return null
               })()}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
-              <button className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm" onClick={() => setDeleteConfirm(null)}>Annulla</button>
+              <button className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-50" onClick={() => setDeleteConfirm(null)} disabled={deleteLoading}>Annulla</button>
               <button
-                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
+                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
                 onClick={async () => {
                   const target = deleteConfirm
                   if (!target) return
                   try {
+                    setDeleteLoading(true)
                     await deleteUser(target.id)
                     toast.success('Utente eliminato')
                     setDeleteConfirm(null)
                     // Aggiorna lista
-                    void searchUsers({ page: 1, per_page: perPage, search: (search.trim().length === 0 || search.trim().length >= 3) ? (search.trim() || undefined) : undefined, roles: (roleFilter ? [roleFilter] : allowedRoleOptions) })
+                    void searchUsers({ page: 1, per_page: perPage, search: (search.trim().length === 0 || search.trim().length >= 3) ? (search.trim() || undefined) : undefined, roles: (isEditorInChiefOnly ? (['Journalist'] as UserRoleFilter[]) : (roleFilter ? [roleFilter] : allowedRoleOptions)) })
                   } catch (e: any) {
-                    // Messaggio personalizzato per 403 su eliminazione utente
-                    if (e && typeof e.status === 'number' && e.status === 403) {
-                      toast.error('Non hai i permessi per questa operazione (oppure l’utente potrebbe avere altri ruoli che non sei autorizzato a gestire)')
+                    // Gestione specifica degli errori per evitare doppi toast
+                    if (e && typeof e.status === 'number') {
+                      if (e.status === 403) {
+                        toast.error('Non hai i permessi per questa operazione (oppure l’utente potrebbe avere altri ruoli che non sei autorizzato a gestire)')
+                      } else if (e.status === 401) {
+                        toast.error('Sessione scaduta o non autorizzato')
+                      } else if (e.status >= 500) {
+                        toast.error('Errore del server, riprova più tardi')
+                      }
                     }
+                  } finally {
+                    setDeleteLoading(false)
                   }
                 }}
+                disabled={deleteLoading}
               >
-                Elimina
+                {deleteLoading && (
+                  <span className="inline-block h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                )}
+                {deleteLoading ? 'Eliminazione...' : 'Elimina'}
               </button>
             </div>
           </div>

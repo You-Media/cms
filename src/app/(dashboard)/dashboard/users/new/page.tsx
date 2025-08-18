@@ -14,6 +14,25 @@ import { z } from 'zod'
 
 export default function NewUserPage() {
   const { hasPermission, hasAnyRole, isSuperAdmin } = useAuth()
+  
+  // Mappatura nomi ruoli in italiano
+  const roleLabelIt = (role: string): string => {
+    switch (role) {
+      case 'EditorInChief':
+        return 'Caporedattore'
+      case 'Publisher':
+        return 'Editore'
+      case 'AdvertisingManager':
+        return 'Manager Pubblicità'
+      case 'Journalist':
+        return 'Giornalista'
+      case 'Consumer':
+        return 'Lettore'
+      default:
+        return role
+    }
+  }
+  
   // Stessa logica di visibilità ruoli della tabella
   const allowedRoleOptions: string[] = (() => {
     if (isSuperAdmin) return ['EditorInChief', 'Publisher', 'AdvertisingManager', 'Journalist', 'Consumer']
@@ -31,15 +50,7 @@ export default function NewUserPage() {
   })()
   const canCreate = hasPermission('manage_users') || hasPermission('manage_publishers') || hasPermission('manage_editors_in_chief') || hasPermission('manage_advertising_managers') || hasPermission('manage_journalists')
 
-  if (!canCreate) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">403 - Operazione non consentita</h1>
-        <p className="text-sm text-gray-500 mt-2">Non hai il permesso per creare nuovi utenti.</p>
-      </div>
-    )
-  }
-
+  // React hooks must be called before any conditional returns
   const [submitting, setSubmitting] = useState(false)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -62,6 +73,15 @@ export default function NewUserPage() {
     .regex(/[a-z]/, 'La password deve contenere almeno una lettera minuscola')
     .regex(/[0-9]/, 'La password deve contenere almeno un numero')
     .regex(/[^A-Za-z0-9]/, 'La password deve contenere almeno un carattere speciale')
+
+  if (!canCreate) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">403 - Operazione non consentita</h1>
+        <p className="text-sm text-gray-500 mt-2">Non hai il permesso per creare nuovi utenti.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-8">
@@ -136,7 +156,7 @@ export default function NewUserPage() {
                   {allowedRoleOptions.map((r) => {
                     const active = roles.includes(r)
                     return (
-                      <button type="button" key={r} onClick={() => setRoles(active ? roles.filter((x) => x !== r) : [...roles, r])} className={`px-3 py-1.5 rounded-full text-xs border ${active ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>{r}</button>
+                      <button type="button" key={r} onClick={() => setRoles(active ? roles.filter((x) => x !== r) : [...roles, r])} className={`px-3 py-1.5 rounded-full text-xs border ${active ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>{roleLabelIt(r)}</button>
                     )
                   })}
                 </div>
@@ -219,7 +239,7 @@ export default function NewUserPage() {
                 <div><span className="text-gray-500 text-xs">Nome</span><div className="font-medium">{firstName || '-'}</div></div>
                 <div><span className="text-gray-500 text-xs">Cognome</span><div className="font-medium">{lastName || '-'}</div></div>
                 <div><span className="text-gray-500 text-xs">Email</span><div className="font-medium break-all">{email || '-'}</div></div>
-                <div><span className="text-gray-500 text-xs">Ruoli</span><div className="font-medium">{roles.length ? roles.join(', ') : '-'}</div></div>
+                <div><span className="text-gray-500 text-xs">Ruoli</span><div className="font-medium">{roles.length ? roles.map(r => roleLabelIt(r)).join(', ') : '-'}</div></div>
                 <div className="space-y-1">
                   <div className="text-gray-500 text-xs">Foto profilo</div>
                   <div className="flex items-center">

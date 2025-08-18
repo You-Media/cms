@@ -6,6 +6,8 @@ import { OtpForm } from '@/components/forms/otp-form'
 import type { LoginFormData, OtpData } from '@/lib/validations'
 import { useAuthStore } from '@/stores/auth-store'
 import { api } from '@/lib/api'
+import { useRouter } from 'next/navigation'
+import { APP_ROUTES } from '@/config/routes'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
@@ -13,6 +15,7 @@ export default function LoginPage() {
   const [otpData, setOtpData] = useState<OtpData | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
   const { otpData: storeOtpData, isTempTokenValid, clearTempToken, selectedSite } = useAuthStore()
+  const router = useRouter()
 
   // Verifica se esiste già un token temporaneo valido
   useEffect(() => {
@@ -38,6 +41,29 @@ export default function LoginPage() {
     }
   }, [selectedSite])
 
+  // Mostra toast se arriviamo qui da redirect 5xx/CORS, poi prova a rientrare automaticamente
+  useEffect(() => {
+    try {
+      const reason = sessionStorage.getItem('redirect_reason')
+      if (reason === 'SERVER_ERROR') {
+        sessionStorage.removeItem('redirect_reason')
+        toast.error('Servizio temporaneamente non disponibile', {
+          description: 'Riprova tra poco. Verifico se la sessione è ancora valida...'
+        })
+        const attempt = async () => {
+          try {
+            await useAuthStore.getState().fetchMe()
+            const { user, token } = useAuthStore.getState()
+            if (user && token) {
+              router.replace(APP_ROUTES.DASHBOARD.HOME)
+            }
+          } catch {}
+        }
+        attempt()
+      }
+    } catch {}
+  }, [router])
+
   const handleCredentialsSubmit = async (data: LoginFormData) => {
     try {
       const { login } = useAuthStore.getState()
@@ -50,7 +76,7 @@ export default function LoginPage() {
         setSessionExpired(false) // Pulisci il messaggio di sessione scaduta
       } else {
         // Se non richiede OTP, il login è completato
-        // Qui puoi reindirizzare alla dashboard
+        router.replace(APP_ROUTES.DASHBOARD.HOME)
       }
     } catch (error) {
       // L'errore è già gestito nello store

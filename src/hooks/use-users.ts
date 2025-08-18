@@ -19,6 +19,7 @@ export interface UsersSearchRow {
   roles: string[]
   permissions: string[]
   profilePhoto?: string
+  articlesCount?: number
 }
 
 export interface UsersSearchResponse {
@@ -78,6 +79,7 @@ export function useUsers() {
           roles: Array.isArray(u.roles) ? u.roles : [],
           permissions: Array.isArray(u.permissions) ? u.permissions.map((p: any) => typeof p === 'string' ? p : (p?.name || '')).filter(Boolean) : [],
           profilePhoto: u?.profile?.profile_photo || undefined,
+          articlesCount: typeof u?.articles_count === 'number' ? u.articles_count : undefined,
         }))
         setRows(mapped)
         setTotal(payload.total || 0)
@@ -131,6 +133,7 @@ export async function unblockUserPermissions(userId: number | string, permission
 }
 
 export async function deleteUser(userId: number | string): Promise<{ status: string; message: string }> {
+  // Sopprimi i toast globali per gestire localmente 401/5xx senza duplicati nel flusso di cancellazione
   return api.delete<{ status: string; message: string }>(API_ENDPOINTS.USERS.DELETE(userId), undefined, { suppressGlobalToasts: true })
 }
 

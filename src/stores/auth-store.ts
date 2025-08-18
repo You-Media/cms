@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { API_ENDPOINTS } from '@/config/endpoints';
 import type { LoginCredentials, LoginResponse, User, AuthState } from '@/types/auth';
 import type { LoginApiCredentials, OtpResponse, OtpData, OtpVerifyResponse } from '@/lib/validations';
+import { APP_ROUTES } from '@/config/routes';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials, site: string) => Promise<OtpData | null>;
@@ -107,7 +108,7 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         try {
           // Chiama l'API di logout per invalidare il token
-          await api.post(API_ENDPOINTS.AUTH.LOGOUT);
+          await api.post(API_ENDPOINTS.AUTH.LOGOUT, undefined, undefined, { suppressGlobalToasts: true });
         } catch (error) {
           console.error('Logout API error:', error);
           // Non bloccare il logout se l'API fallisce
@@ -294,6 +295,16 @@ export const useAuthStore = create<AuthStore>()(
           if (user) set({ user });
         } catch (error) {
           // Se fallisce con 401, verrà gestito dal client API (refresh -> logout)
+          // Per errori 5xx su /me, mostra toast (già gestito globalmente) e reindirizza al login
+          // Considera anche errori di rete/CORS (status 0)
+          if (error instanceof ApiError && (error.status >= 500 || error.status === 0)) {
+            if (typeof window !== 'undefined') {
+              try {
+                sessionStorage.setItem('redirect_reason', 'SERVER_ERROR');
+              } catch {}
+              window.location.href = APP_ROUTES.AUTH.LOGIN;
+            }
+          }
         }
       },
     }),

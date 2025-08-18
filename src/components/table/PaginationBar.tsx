@@ -1,9 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 
 type PaginationBarProps = {
   total: number
@@ -28,6 +29,24 @@ export function PaginationBar({
   onPrev,
   onNext,
 }: PaginationBarProps) {
+  const [perPageInput, setPerPageInput] = useState<string>(String(perPage))
+
+  // Mantieni sincronizzato l'input con il valore effettivo
+  useEffect(() => {
+    setPerPageInput(String(perPage))
+  }, [perPage])
+
+  const commitPerPage = () => {
+    const raw = perPageInput.trim()
+    const num = Number(raw)
+    if (!raw || Number.isNaN(num) || num < 1 || num > 100) {
+      toast.error('Inserisci un numero tra 1 e 100')
+      setPerPageInput(String(perPage))
+      return
+    }
+    if (num !== perPage) setPerPage(num)
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-4">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -44,17 +63,14 @@ export function PaginationBar({
             <Label htmlFor="per_page_bottom" className="text-sm text-gray-600 dark:text-gray-300">Elementi per pagina</Label>
             <Input
               id="per_page_bottom"
-              value={String(perPage)}
-              onChange={(e) => {
-                const val = e.target.value.trim()
-                const num = Number(val)
-                if (!val) {
-                  setPerPage(15)
-                  return
+              value={perPageInput}
+              onChange={(e) => setPerPageInput(e.target.value)}
+              onBlur={commitPerPage}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitPerPage()
                 }
-                if (Number.isNaN(num)) return
-                const bounded = Math.max(1, Math.min(100, num))
-                setPerPage(bounded)
               }}
               placeholder="15"
               className="w-20 text-center"
