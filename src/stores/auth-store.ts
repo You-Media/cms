@@ -6,6 +6,9 @@ import type { LoginCredentials, LoginResponse, User, AuthState } from '@/types/a
 import type { LoginApiCredentials, OtpResponse, OtpData, OtpVerifyResponse } from '@/lib/validations';
 import { APP_ROUTES } from '@/config/routes';
 
+// Evita chiamate duplicate a /me (es. StrictMode dev, doppio trigger post-refresh)
+let inflightFetchMePromise: Promise<void> | null = null;
+
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials, site: string) => Promise<OtpData | null>;
   logout: () => Promise<void>;
@@ -289,23 +292,29 @@ export const useAuthStore = create<AuthStore>()(
       fetchMe: async () => {
         const { token } = get();
         if (!token) return;
-        try {
-          const res = await api.getMe();
-          const user = res?.data as User;
-          if (user) set({ user });
-        } catch (error) {
-          // Se fallisce con 401, verrà gestito dal client API (refresh -> logout)
-          // Per errori 5xx su /me, mostra toast (già gestito globalmente) e reindirizza al login
-          // Considera anche errori di rete/CORS (status 0)
-          if (error instanceof ApiError && (error.status >= 500 || error.status === 0)) {
-            if (typeof window !== 'undefined') {
-              try {
-                sessionStorage.setItem('redirect_reason', 'SERVER_ERROR');
-              } catch {}
-              window.location.href = APP_ROUTES.AUTH.LOGIN;
+        if (inflightFetchMePromise) return inflightFetchMePromise;
+        inflightFetchMePromise = (async () => {
+          try {
+            const res = await api.getMe();
+            const user = res?.data as User;
+            if (user) set({ user });
+          } catch (error) {
+            // Se fallisce con 401, verrà gestito dal client API (refresh -> logout)
+            // Per errori 5xx su /me, mostra toast (già gestito globalmente) e reindirizza al login
+            // Considera anche errori di rete/CORS (status 0)
+            if (error instanceof ApiError && (error.status >= 500 || error.status === 0)) {
+              if (typeof window !== 'undefined') {
+                try {
+                  sessionStorage.setItem('redirect_reason', 'SERVER_ERROR');
+                } catch {}
+                window.location.href = APP_ROUTES.AUTH.LOGIN;
+              }
             }
+          } finally {
+            inflightFetchMePromise = null;
           }
-        }
+        })();
+        return inflightFetchMePromise;
       },
     }),
     {
