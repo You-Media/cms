@@ -29,6 +29,11 @@ export const APP_ROUTES = {
     TAGS: {
       LIST: '/dashboard/tags',
     },
+    ARTICLES: {
+      LIST: '/dashboard/articles',
+      NEW: '/dashboard/articles/new',
+      EDIT: (id: string | number) => `/dashboard/articles/${id}`,
+    },
     BANNERS: {
       LIST: '/dashboard/banners',
       NEW: '/dashboard/banners/new',
@@ -99,6 +104,7 @@ function getSegmentLabel(segment: string, segments: string[], index: number): st
     categories: 'Categorie',
     subcategories: 'Sottocategorie',
     tags: 'Tag',
+    articles: 'Articoli',
     banners: 'Banner',
     publishers: 'Publisher',
     'editors-in-chief': 'Caporedattori',
@@ -172,6 +178,8 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/settings': ['manage_settings'],
   '/dashboard/categories': ['read_categories'],
   '/dashboard/tags': ['read_tags'],
+  '/dashboard/articles': ['read_articles'],
+  '/dashboard/articles/new': ['create_article'],
   '/dashboard/banners': ['view_banners'],
   '/dashboard/banners/new': ['create_banner'],
   '/dashboard/users/new': ['manage_users'],

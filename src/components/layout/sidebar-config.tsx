@@ -53,6 +53,22 @@ export function buildSidebarNavigation(
     }
   }
 
+  // Articoli (visibile a Journalist, EditorInChief, Publisher)
+  if (selectedSite === 'editoria' && hasAnyRole(['Journalist', 'EditorInChief', 'Publisher'])) {
+
+      items.push({
+        name: 'Articoli',
+        href: APP_ROUTES.DASHBOARD.ARTICLES.LIST,
+        icon: (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6M9 12h6M9 16h6" />
+          </svg>
+        ),
+      })
+   
+  }
+
   if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'EditorInChief', 'AdvertisingManager'])) {
     // Mostra banner se l'utente ha il permesso di visualizzarli
     if (hasPermission('view_banners')) {

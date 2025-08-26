@@ -7,7 +7,16 @@ export type Article = {
   id: number
   title: string
   slug?: string
+  subtitle?: string
   published_at?: string
+  ttr?: number
+  priority?: number
+  status?: string
+  author?: { id: number; name: string; avatar?: string }
+  categories?: Array<{ id: number; title: string; slug: string }>
+  region?: string
+  province?: string
+  cover_preview?: string
 }
 
 export function useArticles() {
@@ -17,12 +26,16 @@ export function useArticles() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
-  const search = useCallback(async (params: { search?: string; category_id?: number | ''; sort_by?: string; sort_direction?: 'asc' | 'desc'; per_page?: number; page?: number }) => {
+  const search = useCallback(async (params: { search?: string; category_id?: number | ''; region_name?: string; province_name?: string; status?: string; author_id?: number | ''; sort_by?: string; sort_direction?: 'asc' | 'desc'; per_page?: number; page?: number }) => {
     setLoading(true)
     try {
       const qs = new URLSearchParams()
       if (params.search) qs.append('search', params.search)
       if (params.category_id) qs.append('category_id', String(params.category_id))
+      if (params.region_name) qs.append('region_name', params.region_name)
+      if (params.province_name) qs.append('province_name', params.province_name)
+      if (params.status) qs.append('status', params.status)
+      if (params.author_id) qs.append('author_id', String(params.author_id))
       if (params.sort_by) qs.append('sort_by', params.sort_by)
       if (params.sort_direction) qs.append('sort_direction', params.sort_direction)
       qs.append('per_page', String(params.per_page ?? 10))
