@@ -157,11 +157,7 @@ export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleS
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__NONE__">Nessuno</SelectItem>
-                  <SelectItem value="recenti">Recenti</SelectItem>
-                  <SelectItem value="popolari">Popolari</SelectItem>
-                  <SelectItem value="alfabetico">Alfabetico</SelectItem>
                   <SelectItem value="published_at">Data pubblicazione</SelectItem>
-                  <SelectItem value="priority">Priorità</SelectItem>
                   <SelectItem value="title">Titolo</SelectItem>
                 </SelectContent>
               </Select>

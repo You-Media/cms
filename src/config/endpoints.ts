@@ -55,7 +55,7 @@ export const API_ENDPOINTS = {
 
   // Articles endpoints (per ricerca nel form banner)
   ARTICLES: {
-    FILTER: '/articles/filter',
+    FILTER: '/me/articles/filter',
     SEARCH: '/articles/search',
     CREATE: '/articles',
     DETAIL: (id: number | string) => `/articles/${id}`,

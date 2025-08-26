@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { api, ApiError } from '@/lib/api'
 import { API_ENDPOINTS } from '@/config/endpoints'
 import { toast } from 'sonner'
+import type { ArticleStatus } from '@/types/articles'
 
 export type Article = {
   id: number
@@ -11,7 +12,8 @@ export type Article = {
   published_at?: string
   ttr?: number
   priority?: number
-  status?: string
+  status?: ArticleStatus
+  show_link?: string
   author?: { id: number; name: string; avatar?: string }
   categories?: Array<{ id: number; title: string; slug: string }>
   region?: string
@@ -26,7 +28,7 @@ export function useArticles() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
-  const search = useCallback(async (params: { search?: string; category_id?: number | ''; region_name?: string; province_name?: string; status?: string; author_id?: number | ''; sort_by?: string; sort_direction?: 'asc' | 'desc'; per_page?: number; page?: number }) => {
+  const search = useCallback(async (params: { search?: string; category_id?: number | ''; region_name?: string; province_name?: string; status?: ArticleStatus; author_id?: number | ''; sort_by?: string; sort_direction?: 'asc' | 'desc'; per_page?: number; page?: number }) => {
     setLoading(true)
     try {
       const qs = new URLSearchParams()
@@ -41,7 +43,7 @@ export function useArticles() {
       qs.append('per_page', String(params.per_page ?? 10))
       qs.append('page', String(params.page ?? 1))
 
-      const res = await api.get<any>(`${API_ENDPOINTS.ARTICLES.FILTER}?${qs.toString()}`)
+      const res = await api.get<any>(`${API_ENDPOINTS.ARTICLES.FILTER}?${qs.toString()}`, undefined, { suppressGlobalToasts: true })
       const d = res?.data
       let list: Article[] = []
       let totalNum = 0

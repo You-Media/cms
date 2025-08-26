@@ -19,7 +19,12 @@ import { API_ENDPOINTS } from '@/config/endpoints'
 import CategorySelectModal from '@/components/forms/category-select-modal'
 import AuthorSelectModal from '@/components/forms/author-select-modal'
 import type { Article } from '@/hooks/use-articles'
+import { ARTICLE_STATUS_LABEL, statusColorClass } from '@/types/articles'
+import type { ArticleStatus } from '@/types/articles'
 import { useArticles } from '@/hooks/use-articles'
+// import { fetchCategoryTree } from '@/hooks/use-categories'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { useItalyGeo } from '@/hooks/use-italy-geo'
 
 export default function ArticlesPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
@@ -37,6 +42,7 @@ export default function ArticlesPage() {
   }
 
   const { results, loading, page, totalPages, total, setPage, search } = useArticles()
+  const { searchRegions, searchProvinces } = useItalyGeo()
 
   const showAuthorFilter = hasAnyRole(['PUBLISHER', 'EDITOR_IN_CHIEF'])
   const isJournalist = hasAnyRole(['JOURNALIST'])
@@ -48,17 +54,21 @@ export default function ArticlesPage() {
   const [openAuthorModal, setOpenAuthorModal] = useState(false)
   const [regionName, setRegionName] = useState('')
   const [provinceName, setProvinceName] = useState('')
-  const [status, setStatus] = useState<string>('')
+  const [status, setStatus] = useState<'' | ArticleStatus>('')
   const [authorId, setAuthorId] = useState<number | ''>('')
   const [authorName, setAuthorName] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'published_at' | 'priority' | 'title' | 'recenti' | 'popolari' | 'alfabetico'>('published_at')
+  const [sortBy, setSortBy] = useState<'published_at' | 'title'>('published_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [perPage, setPerPage] = useState(20)
   const lastKeyRef = useRef<string>('')
 
+  // Rimosso fetch dell'albero categorie: non necessario per il filtro
+  const [showRegionDropdown, setShowRegionDropdown] = useState(false)
+  const [showProvinceDropdown, setShowProvinceDropdown] = useState(false)
+
   const canCreate = hasPermission('create_article')
   const canEdit = hasPermission('edit_article')
-  const canDelete = hasPermission('delete_article')
+  const canDelete = hasPermission('delete_content')
 
   useEffect(() => {
     const key = `${page}|${perPage}`
@@ -78,11 +88,43 @@ export default function ArticlesPage() {
       category_id: categoryId || undefined,
       region_name: regionName || undefined,
       province_name: provinceName || undefined,
-      status: status || undefined,
+      status: (status || undefined) as ArticleStatus | undefined,
       author_id: authorId || undefined,
       sort_by: sortBy,
       sort_direction: sortDirection,
     })
+  }
+
+  function applyCategoryFilter(catId: number, catTitle: string) {
+    setSelectedCategoryTitle(catTitle)
+    setCategoryId(catId)
+    setPage(1)
+    void search({
+      page: 1,
+      per_page: perPage,
+      search: query || undefined,
+      category_id: catId,
+      region_name: regionName || undefined,
+      province_name: provinceName || undefined,
+      status: (status || undefined) as ArticleStatus | undefined,
+      author_id: authorId || undefined,
+      sort_by: sortBy,
+      sort_direction: sortDirection,
+    })
+  }
+
+  function formatCategoryPathFromSlug(slug: string | undefined, title: string): string {
+    if (!slug) return title
+    const parts = String(slug).split('/').filter(Boolean)
+    if (parts.length === 0) return title
+    const pretty = parts.map((segment, idx) => {
+      // Usa il title per l'ultimo segmento
+      if (idx === parts.length - 1) return title
+      // Title-case i segmenti intermedi (sostituisci i trattini con spazi)
+      const s = segment.replace(/-/g, ' ')
+      return s.replace(/\b\w/g, (c) => c.toUpperCase())
+    })
+    return pretty.join(' / ')
   }
 
   const canGoPrev = useMemo(() => page > 1, [page])
@@ -93,7 +135,7 @@ export default function ArticlesPage() {
     const ok = window.confirm(`Confermi l'eliminazione dell'articolo #${article.id}?`)
     if (!ok) return
     try {
-      await api.delete(API_ENDPOINTS.ARTICLES.DELETE(article.id))
+      await api.delete(API_ENDPOINTS.ARTICLES.DELETE(article.id), undefined, { suppressGlobalToasts: true })
       toast.success('Articolo eliminato')
       // refresh current page
       void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -117,8 +159,16 @@ export default function ArticlesPage() {
     {
       key: 'id',
       header: 'ID',
-      cell: (a) => <span className="text-xs font-mono">#{a.id}</span>,
-      tdClassName: 'px-6 py-4 whitespace-nowrap',
+      cell: (a) => (
+        <div className="flex items-center gap-2">
+          <span
+            title={a.status ? ARTICLE_STATUS_LABEL[a.status] : undefined}
+            className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass(a.status)}`}
+          />
+          <span className="text-xs font-mono">#{a.id}</span>
+        </div>
+      ),
+      tdClassName: 'px-6 py-4 whitespace-nowrap text-center',
     },
     {
       key: 'cover_preview',
@@ -147,25 +197,47 @@ export default function ArticlesPage() {
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
     {
-      key: 'status',
-      header: 'Stato',
-      cell: (a) => (
-        <div className="h-14 flex items-center">
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-block w-2.5 h-2.5 rounded-full ${a.status === 'published' ? 'bg-green-500' : a.status === 'draft' ? 'bg-gray-400' : a.status === 'review' ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-            />
-            <span className="text-sm capitalize">{a.status || '-'}</span>
-          </div>
-        </div>
-      ),
-      tdClassName: 'px-6 py-4 whitespace-nowrap align-middle',
-    },
-    {
       key: 'categories',
       header: 'Categoria',
-      cell: (a) => <span className="text-sm truncate block max-w-[220px]">{a.categories && a.categories[0]?.title ? a.categories[0].title : '-'}</span>,
-      tdClassName: 'px-6 py-4',
+      cell: (a) => {
+        const first = Array.isArray(a.categories) ? a.categories[0] : undefined
+        if (!first) return <span className="text-sm">-</span>
+        const label = first.title || '-'
+        const isChild = typeof first.slug === 'string' && first.slug.includes('/')
+        const badgeClass = isChild
+          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ring-1 ring-amber-300/60 dark:ring-amber-700/60'
+          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300/60 dark:ring-blue-700/60'
+        const fullPath = isChild ? formatCategoryPathFromSlug(first.slug, label) : ''
+        return (
+          <div className="max-w-[260px] text-center">
+            {isChild ? (
+              <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      role="button"
+                      onClick={() => applyCategoryFilter(first.id, label)}
+                      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-sm cursor-pointer ${badgeClass}`}
+                    >
+                      {label}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{fullPath}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <span
+                role="button"
+                onClick={() => applyCategoryFilter(first.id, label)}
+                className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-sm cursor-pointer ${badgeClass}`}
+              >
+                {label}
+              </span>
+            )}
+          </div>
+        )
+      },
+      tdClassName: 'px-6 py-4 text-center',
     },
     {
       key: 'author',
@@ -186,23 +258,85 @@ export default function ArticlesPage() {
       key: 'actions',
       header: 'Azioni',
       cell: (a) => (
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <Link href={APP_ROUTES.DASHBOARD.ARTICLES.EDIT(a.id)} className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-              Modifica
-            </Link>
-          )}
-          {canDelete && (
-            <Button type="button" variant="destructive" size="sm" onClick={() => handleDelete(a)}>
-              Elimina
-            </Button>
-          )}
-        </div>
+        <RowActions article={a} />
       ),
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
   ]
+
+  function RowActions({ article }: { article: Article }) {
+    const [open, setOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement | null>(null)
+
+    useEffect(() => {
+      function onDocClick(e: MouseEvent) {
+        if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+          setOpen(false)
+        }
+      }
+      document.addEventListener('mousedown', onDocClick)
+      return () => document.removeEventListener('mousedown', onDocClick)
+    }, [])
+
+    return (
+      <div className="relative" ref={menuRef}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-9 w-9 p-0 flex items-center justify-center"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Azioni articolo #${article.id}`}
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        </Button>
+        {open && (
+          <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-20 py-1">
+            {article.status === 'published' && article.show_link ? (
+              <a
+                href={article.show_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => setOpen(false)}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0 0L10 21l-7-7L14 3z" /></svg>
+                Vedi su Editoria
+              </a>
+            ) : null}
+            {canEdit && (
+              <Link
+                href={APP_ROUTES.DASHBOARD.ARTICLES.EDIT(article.id)}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => setOpen(false)}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                Modifica
+              </Link>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                onClick={() => { setOpen(false); void handleDelete(article) }}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Elimina
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-8">
@@ -226,11 +360,55 @@ export default function ArticlesPage() {
         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Regione</Label>
-            <Input value={regionName} onChange={(e) => setRegionName(e.target.value)} placeholder="Es. Lombardia" />
+            <div className="relative">
+              <Input
+                value={regionName}
+                onChange={(e) => { setRegionName(e.target.value); setProvinceName('') }}
+                onFocus={() => setShowRegionDropdown(true)}
+                onBlur={() => setTimeout(() => setShowRegionDropdown(false), 100)}
+                placeholder="Es. Lazio"
+              />
+              {showRegionDropdown && regionName && searchRegions(regionName).slice(0, 6).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
+                  {searchRegions(regionName).slice(0, 6).map((r) => (
+                    <button
+                      key={r.name}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                      onClick={() => { setRegionName(r.name); setProvinceName(''); setShowRegionDropdown(false) }}
+                    >
+                      {r.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Provincia</Label>
-            <Input value={provinceName} onChange={(e) => setProvinceName(e.target.value)} placeholder="Es. Milano" />
+            <div className="relative">
+              <Input
+                value={provinceName}
+                onChange={(e) => { setProvinceName(e.target.value); setShowProvinceDropdown(true) }}
+                onFocus={() => setShowProvinceDropdown(true)}
+                onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 100)}
+                placeholder="Es. Frosinone"
+              />
+              {showProvinceDropdown && provinceName && searchProvinces(provinceName, regionName || undefined).slice(0, 6).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
+                  {searchProvinces(provinceName, regionName || undefined).slice(0, 6).map((p) => (
+                    <button
+                      key={`${p.name}-${p.abbreviation || ''}`}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                      onClick={() => { setProvinceName(p.name); if (!regionName && p.regionName) setRegionName(p.regionName); setShowProvinceDropdown(false) }}
+                    >
+                      {p.name}{p.abbreviation ? ` (${p.abbreviation})` : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -260,17 +438,20 @@ export default function ArticlesPage() {
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Stato</Label>
-            <Select value={status || '__ALL__'} onValueChange={(v) => setStatus(v === '__ALL__' ? '' : v)}>
+            <Select value={status || '__ALL__'} onValueChange={(v) => setStatus(v === '__ALL__' ? '' : (v as ArticleStatus))}>
               <SelectTrigger>
                 <SelectValue placeholder="Tutti" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__ALL__">Tutti</SelectItem>
                 {/* Le opzioni devono combaciare con ArticleStatus::cases() lato API */}
-                <SelectItem value="draft">Bozza</SelectItem>
-                <SelectItem value="review">Revisione</SelectItem>
-                <SelectItem value="published">Pubblicato</SelectItem>
-                <SelectItem value="archived">Archiviato</SelectItem>
+                <SelectItem value="draft">{ARTICLE_STATUS_LABEL.draft}</SelectItem>
+                <SelectItem value="published">{ARTICLE_STATUS_LABEL.published}</SelectItem>
+                <SelectItem value="revision">{ARTICLE_STATUS_LABEL.revision}</SelectItem>
+                <SelectItem value="unpublished">{ARTICLE_STATUS_LABEL.unpublished}</SelectItem>
+                <SelectItem value="archived">{ARTICLE_STATUS_LABEL.archived}</SelectItem>
+                <SelectItem value="approved">{ARTICLE_STATUS_LABEL.approved}</SelectItem>
+                <SelectItem value="rejected">{ARTICLE_STATUS_LABEL.rejected}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -313,11 +494,7 @@ export default function ArticlesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="published_at">Data pubblicazione</SelectItem>
-              <SelectItem value="priority">Priorità</SelectItem>
               <SelectItem value="title">Titolo</SelectItem>
-              <SelectItem value="recenti">Recenti</SelectItem>
-              <SelectItem value="popolari">Popolari</SelectItem>
-              <SelectItem value="alfabetico">Alfabetico</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -346,6 +523,31 @@ export default function ArticlesPage() {
                 Nuovo articolo
               </Link>
             ) : null
+          )}
+          rightAside={(
+            <div className="flex items-start gap-6">
+              <div className="flex flex-col items-end gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" /> {ARTICLE_STATUS_LABEL.approved}</div>
+                <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" /> {ARTICLE_STATUS_LABEL.rejected}</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" /> {ARTICLE_STATUS_LABEL.revision}</div>
+                </div>
+                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" /> {ARTICLE_STATUS_LABEL.published}</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400" /> {ARTICLE_STATUS_LABEL.unpublished}</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" /> {ARTICLE_STATUS_LABEL.draft}</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full bg-zinc-500" /> {ARTICLE_STATUS_LABEL.archived}</div>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-800 ring-1 ring-blue-300/60 dark:bg-blue-900 dark:text-blue-200 dark:ring-blue-700/60">Categoria principale</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-900 dark:text-amber-200 dark:ring-amber-700/60">Categoria figlia</span>
+                </div>
+              </div>
+            </div>
           )}
         />
         <DataTable<Article>

@@ -22,14 +22,7 @@ export default function AuthorSelectModal({ open, onClose, onSelect, roles = ['J
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const handle = setTimeout(() => {
-      void searchUsers({ page: 1, per_page: 10, search: query, roles })
-    }, 250)
-    return () => clearTimeout(handle)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
+  // Rimosso live-search su digitazione: la ricerca parte solo su click/Enter
 
   const emptyState = useMemo(() => !loading && rows.length === 0, [loading, rows])
 
@@ -52,7 +45,12 @@ export default function AuthorSelectModal({ open, onClose, onSelect, roles = ['J
           <div className="space-y-1">
             <label className="text-sm font-medium">Cerca autore</label>
             <div className="flex items-center gap-2">
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Digita per cercare..." />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void searchUsers({ page: 1, per_page: 10, search: query, roles }) } }}
+                placeholder="Digita per cercare..."
+              />
               <Button type="button" variant="secondary" onClick={() => void searchUsers({ page: 1, per_page: 10, search: query, roles })}>Cerca</Button>
             </div>
           </div>
