@@ -92,7 +92,7 @@ class ApiClient {
           console.warn('Failed to parse error response:', parseError);
         }
         
-        // Toast globale per 422 - Richiesta non valida
+        // Toast globale per 422 - Richiesta non valida (mostralo solo se non soppressi e senza messaggio custom a livello chiamante)
         if (response.status === 422 && !options?.suppressGlobalToasts) {
           try {
             toast.error('Richiesta non valida')
@@ -237,6 +237,17 @@ class ApiClient {
 
   async getMe(): Promise<{ status: string; message: string; data: any }> {
     return this.get(API_ENDPOINTS.AUTH.ME);
+  }
+
+  // Change password
+  async changePassword(payload: { current_password: string; new_password: string; new_password_confirmation: string }): Promise<{ status: string; message: string } > {
+    return this.put(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, payload)
+  }
+
+  // Update profile (partial) - multipart/form-data
+  async updateMyProfile(formData: FormData): Promise<{ status: string; message: string; data: any }> {
+    // Do not set content-type, the client handles boundary
+    return this.patch(API_ENDPOINTS.PROFILE.UPDATE_PARTIAL, formData)
   }
 
   // Metodo specifico per generare nuovo OTP

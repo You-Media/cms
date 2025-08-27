@@ -95,10 +95,6 @@ function MenuBar({ editor }: { editor: Editor }) {
             <polyline points="8 6 2 12 8 18"></polyline>
           </svg>
         </IconBtn>
-        <IconBtn title="Rimuovi formattazioni" disabled={!s.canClearMarks} onClick={() => editor.chain().focus().unsetAllMarks().run()}>
-          A⤫
-        </IconBtn>
-        <IconBtn title="Pulisci nodi" onClick={() => editor.chain().focus().clearNodes().run()}>⌫</IconBtn>
       </div>
       <div className="group">
         <IconBtn title="Elenco puntato" active={s.isBulletList} onClick={() => editor.chain().focus().toggleBulletList().run()}>•</IconBtn>
@@ -175,14 +171,14 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Scrivi 
         .sel:hover { background: #f9fafb; }
 
         /* Dark mode */
-        .dark .toolbar { background: #0f172a; border-color: #334155; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
-        .dark .btn { background: #111827; border-color: #374151; color: #e5e7eb; }
-        .dark .btn:hover { background: #1f2937; }
-        .dark .sel { background: #111827; border-color: #374151; color: #e5e7eb; }
+        [data-theme="dark"] .toolbar { background: #0f172a; border-color: #334155; box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+        [data-theme="dark"] .btn { background: #111827; border-color: #374151; color: #e5e7eb; }
+        [data-theme="dark"] .btn:hover { background: #1f2937; }
+        [data-theme="dark"] .sel { background: #111827; border-color: #374151; color: #e5e7eb; }
 
         /* Editor content */
         .tiptap :first-child { margin-top: 0; }
-        .dark .tiptap { background: #0b1220; color: #e5e7eb; }
+        [data-theme="dark"] .tiptap { background: #0b1220; color: #e5e7eb; }
         .tiptap ul, .tiptap ol { padding: 0 1rem; margin: 1.25rem 1rem 1.25rem 0.4rem; }
         .tiptap ul { list-style: disc; }
         .tiptap ol { list-style: decimal; }
@@ -194,14 +190,14 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Scrivi 
         .tiptap h3 { font-size: 1.1rem; }
         .tiptap h4, .tiptap h5, .tiptap h6 { font-size: 1rem; }
         .tiptap code { background-color: rgba(139,92,246,.12); border-radius: 0.4rem; color: #111827; font-size: 0.85rem; padding: 0.25em 0.3em; }
-        .dark .tiptap code { color: #e5e7eb; }
+        [data-theme="dark"] .tiptap code { color: #e5e7eb; }
         .tiptap pre { background: #0f172a; border-radius: 0.5rem; color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; margin: 1.5rem 0; padding: 0.75rem 1rem; }
         .tiptap pre code { background: none; color: inherit; font-size: 0.8rem; padding: 0; }
         .tiptap blockquote { border-left: 3px solid #e5e7eb; margin: 1.5rem 0; padding-left: 1rem; }
-        .dark .tiptap blockquote { border-left-color: #334155; color: #e5e7eb; }
-        .dark .tiptap blockquote p { color: #e5e7eb; }
+        [data-theme="dark"] .tiptap blockquote { border-left-color: #334155; color: #e5e7eb; }
+        [data-theme="dark"] .tiptap blockquote p { color: #e5e7eb; }
         .tiptap hr { border: none; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
-        .dark .tiptap hr { border-top-color: #334155; }
+        [data-theme="dark"] .tiptap hr { border-top-color: #334155; }
       `}</style>
     </div>
   )

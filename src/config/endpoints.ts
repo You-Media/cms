@@ -16,11 +16,17 @@ export const API_ENDPOINTS = {
     ME: '/me',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
+    CHANGE_PASSWORD: '/auth/change-password',
   },
 
   // OTP endpoints (utilizzati)
   OTP: {
     GENERATE: '/otp/generate',
+  },
+
+  // Profile endpoints
+  PROFILE: {
+    UPDATE_PARTIAL: '/me', // PATCH multipart/form-data
   },
 
   // Categories endpoints (nuova risorsa)

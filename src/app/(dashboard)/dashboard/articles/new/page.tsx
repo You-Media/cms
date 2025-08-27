@@ -39,7 +39,6 @@ export default function NewArticlePage() {
   const [metaTitle, setMetaTitle] = useState('')
   const [metaDescription, setMetaDescription] = useState('')
   const [metaKeywords, setMetaKeywords] = useState('')
-  const [focusKeyphrase, setFocusKeyphrase] = useState('')
   const [priority, setPriority] = useState<number | ''>('')
   const [isSearchable, setIsSearchable] = useState(true)
   const [videoUrl, setVideoUrl] = useState('')
@@ -85,7 +84,6 @@ export default function NewArticlePage() {
   // Gallery upload
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([])
-  const [galleryCaptions, setGalleryCaptions] = useState<string[]>([])
 
   const [submitting, setSubmitting] = useState(false)
 
@@ -143,7 +141,7 @@ export default function NewArticlePage() {
     if (!files || files.length === 0) return
     const next: File[] = []
     const nextPrev: string[] = []
-    const nextCaps: string[] = []
+    // captions removed
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
       if (f.size > 5 * 1024 * 1024) {
@@ -152,17 +150,15 @@ export default function NewArticlePage() {
       }
       next.push(f)
       nextPrev.push(URL.createObjectURL(f))
-      nextCaps.push('')
+      // captions removed
     }
     setGalleryFiles((prev) => [...prev, ...next])
     setGalleryPreviews((prev) => [...prev, ...nextPrev])
-    setGalleryCaptions((prev) => [...prev, ...nextCaps])
   }
 
   function removeGalleryIndex(idx: number) {
     setGalleryFiles((prev) => prev.filter((_, i) => i !== idx))
     setGalleryPreviews((prev) => prev.filter((_, i) => i !== idx))
-    setGalleryCaptions((prev) => prev.filter((_, i) => i !== idx))
   }
 
   function validate(): boolean {
@@ -209,7 +205,6 @@ export default function NewArticlePage() {
     categoryIds.forEach((id) => formData.append('category_ids[]', String(id)))
     tagIds.forEach((id) => formData.append('tag_ids[]', String(id)))
     galleryFiles.forEach((f) => formData.append('gallery[]', f))
-    galleryCaptions.forEach((c) => formData.append('gallery_captions[]', c))
 
     setSubmitting(true)
     try {
@@ -363,22 +358,7 @@ export default function NewArticlePage() {
                   className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-600 file:text-white dark:file:bg-amber-600 dark:file:text-white"
                 />
                 <p className="text-xs text-gray-500">Max 5MB per file</p>
-                {galleryFiles.length > 0 && (
-                  <div className="space-y-3 mt-2">
-                    {galleryFiles.map((_, idx) => (
-                      <div key={`cap-${idx}`} className="space-y-1">
-                        <Label htmlFor={`gallery_caption_${idx}`}>Didascalia immagine #{idx + 1}</Label>
-                        <textarea
-                          id={`gallery_caption_${idx}`}
-                          value={galleryCaptions[idx] || ''}
-                          onChange={(e) => setGalleryCaptions((prev) => { const copy = [...prev]; copy[idx] = e.target.value; return copy })}
-                          className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-sm"
-                          placeholder="Testo descrittivo per l'immagine"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* captions removed */}
                 <div className="space-y-2 mt-2">
                   <Label>Video URL</Label>
                   <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://..." maxLength={2048} />
@@ -435,10 +415,7 @@ export default function NewArticlePage() {
               <div className="text-xs text-gray-500">Meta</div>
             </div>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="focus_keyphrase">Focus keyphrase</Label>
-                <Input id="focus_keyphrase" value={focusKeyphrase} onChange={(e) => setFocusKeyphrase(e.target.value)} maxLength={120} placeholder="Parola/e chiave principale/i" />
-              </div>
+              {/* Focus keyphrase removed */}
               <div className="space-y-2">
                 <Label htmlFor="meta_title">Meta title</Label>
                 <Input id="meta_title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={255} placeholder="Titolo SEO" />
@@ -463,7 +440,7 @@ export default function NewArticlePage() {
                   title={metaTitle}
                   description={metaDescription}
                   contentHTML={content}
-                  focusKeyphrase={focusKeyphrase}
+                  focusKeyphrase={''}
                   locale="it_IT"
                 />
               </div>

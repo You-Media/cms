@@ -17,6 +17,8 @@ export const APP_ROUTES = {
   // Dashboard routes (utilizzate)
   DASHBOARD: {
     HOME: '/dashboard',
+    PROFILE: '/dashboard/profile',
+    SECURITY: '/dashboard/security',
     USERS: {
       LIST: '/dashboard/users',
       NEW: '/dashboard/users/new',
