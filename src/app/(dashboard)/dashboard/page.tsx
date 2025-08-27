@@ -3,11 +3,18 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { APP_ROUTES } from '@/config/routes'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { hasPermission, hasAnyPermission } = useAuth()
   const fetchMe = useAuthStore((s) => s.fetchMe)
   const didFetchRef = useRef(false)
+
+  // Check if user can create articles
+  const canCreateArticle = hasAnyPermission(['create_content'])
 
   useEffect(() => {
     if (didFetchRef.current) return
@@ -56,6 +63,30 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Actions */}
+      {canCreateArticle && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Azioni Rapide
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                Crea nuovi contenuti per il tuo sito
+              </p>
+            </div>
+            <Link href={APP_ROUTES.DASHBOARD.ARTICLES.NEW}>
+              <Button className="bg-amber-600 hover:bg-amber-700 text-white">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Crea Articolo
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

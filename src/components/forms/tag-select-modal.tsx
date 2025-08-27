@@ -3,26 +3,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { searchCategories } from '@/hooks/use-categories'
-import type { Category } from '@/types/categories'
+import { api } from '@/lib/api'
 
-type CategorySelectModalProps = {
+type Tag = { id: number; name: string }
+
+type TagSelectModalProps = {
   open: boolean
   onClose: () => void
-  onSelect: (category: Category) => void
+  onSelect: (tag: Tag) => void
 }
 
-export default function CategorySelectModal({ open, onClose, onSelect }: CategorySelectModalProps) {
+export default function TagSelectModal({ open, onClose, onSelect }: TagSelectModalProps) {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<Category[]>([])
+  const [results, setResults] = useState<Tag[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     if (!open) return
-    // Reset state on open; do not prefetch results
     setResults([])
     setPage(1)
     setTotalPages(1)
@@ -42,9 +42,16 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
     }
     setLoading(true)
     try {
-      const res = await searchCategories({ search: q, per_page: 10, page: p })
-      setResults(res.data.data)
-      setTotalPages(res.data.last_page)
+      const params = new URLSearchParams()
+      params.append('page', String(p))
+      params.append('per_page', '10')
+      params.append('search', q)
+      const res = await api.get<any>(`/tags/search?${params.toString()}`)
+      const d = res?.data
+      const list = Array.isArray(d?.data) ? d.data : []
+      const lastPage = d?.last_page || 1
+      setResults(list.map((t: any) => ({ id: t.id, name: t.title })))
+      setTotalPages(lastPage)
       setPage(p)
       setHasSearched(true)
     } catch {
@@ -66,7 +73,7 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
       <div className="w-full max-w-3xl rounded-xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Seleziona categoria</h2>
+            <h2 className="text-lg font-semibold">Seleziona tag</h2>
             <p className="text-xs text-gray-500">Digita almeno 2 caratteri e premi Cerca</p>
           </div>
           <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" onClick={onClose} aria-label="Chiudi">
@@ -76,7 +83,7 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
 
         <div className="p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium">Cerca titolo</label>
+            <label className="text-sm font-medium">Cerca tag</label>
             <div className="flex items-center gap-2">
               <Input value={query} onChange={(e) => { setQuery(e.target.value); setHasSearched(false) }} onKeyDown={(e) => { if (e.key === 'Enter') void runSearch(1) }} placeholder="Digita per cercare..." />
               <Button type="button" variant="secondary" onClick={() => void runSearch(1)}>Cerca</Button>
@@ -94,22 +101,18 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
                       : 'Premi Cerca per avviare la ricerca'}
                 </li>
               )}
-              {!loading && results.map((c) => (
-                <li key={c.id}>
+              {!loading && results.map((t) => (
+                <li key={t.id}>
                   <button
                     type="button"
-                    onClick={() => { onSelect(c); onClose() }}
+                    onClick={() => { onSelect(t); onClose() }}
                     className="w-full text-left p-4 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   >
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{c.title}</div>
-                        <div className="text-xs text-gray-500 flex items-center gap-2">
-                          <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{c.slug}</code>
-                          <span className="truncate">Genitore: {c.parent?.title || 'Nessuno'}</span>
-                        </div>
+                        <div className="text-sm font-medium truncate">{t.name}</div>
                       </div>
-                      <div className="shrink-0 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded-full">#{c.id}</div>
+                      <div className="shrink-0 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs font-medium px-2.5 py-0.5 rounded-full">#{t.id}</div>
                     </div>
                   </button>
                 </li>
@@ -129,5 +132,3 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
     </div>
   )
 }
-
-

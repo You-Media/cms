@@ -66,8 +66,8 @@ export default function ArticlesPage() {
   const [showRegionDropdown, setShowRegionDropdown] = useState(false)
   const [showProvinceDropdown, setShowProvinceDropdown] = useState(false)
 
-  const canCreate = hasPermission('create_article')
-  const canEdit = hasPermission('edit_article')
+  const canCreate = hasPermission('create_content')
+  const canEdit = hasPermission('edit_content')
   const canDelete = hasPermission('delete_content')
 
   useEffect(() => {
