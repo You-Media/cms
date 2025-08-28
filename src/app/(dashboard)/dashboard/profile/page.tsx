@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import ImageCropperModal from '@/components/forms/image-cropper-modal'
 
 const profileSchema = z.object({
   first_name: z.string().max(255).optional(),
@@ -30,12 +31,20 @@ export default function ProfilePage() {
   const { user } = useAuth()
   const { setUser } = useAuthStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Image cropper state
+  const [openCropper, setOpenCropper] = useState(false)
+  const [pendingImageURL, setPendingImageURL] = useState<string | null>(null)
+  const [pendingOriginalName, setPendingOriginalName] = useState<string | null>(null)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      first_name: user?.profile.first_name || '',
-      last_name: user?.profile.last_name || '',
+      first_name: user?.profile?.first_name || '',
+      last_name: user?.profile?.last_name || '',
       email: user?.email || '',
       remove_profile_photo: false,
     },
@@ -47,14 +56,23 @@ export default function ProfilePage() {
 
     try {
       const formData = new FormData()
+      
+      // Add _method field for PHP compatibility
+      formData.append('_method', 'PATCH')
+      
       Object.entries(values).forEach(([key, value]) => {
         if (value === undefined || value === null || value === '') return
-        if (key === 'profile_photo' && value instanceof FileList) {
-          if (value.length > 0) formData.append('profile_photo', value[0])
-          return
-        }
+        if (key === 'profile_photo') return // Skip this, we handle it separately
         formData.append(key, String(value))
       })
+
+      // Handle profile photo separately
+      if (photo) {
+        formData.append('profile_photo', photo)
+      }
+      if (values.remove_profile_photo) {
+        formData.append('remove_profile_photo', '1')
+      }
 
       const res = await api.updateMyProfile(formData)
       if (res?.data) {
@@ -122,9 +140,74 @@ export default function ProfilePage() {
 
           <div className="space-y-4">
             <Label>Foto profilo</Label>
-            <Input type="file" accept="image/*" onChange={(e) => form.setValue('profile_photo', e.target.files as any)} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null
+                if (!file) return
+                const url = URL.createObjectURL(file)
+                setPendingImageURL(url)
+                setPendingOriginalName(file.name || null)
+                setOpenCropper(true)
+              }}
+            />
+            <div className="flex items-center gap-3">
+              <Button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()} 
+                className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Seleziona immagine
+              </Button>
+              {photoPreview && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="inline-flex items-center gap-2"
+                  onClick={() => { 
+                    setPhoto(null); 
+                    setPhotoPreview(null);
+                    form.setValue('remove_profile_photo', true);
+                  }}
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Rimuovi foto
+                </Button>
+              )}
+            </div>
+            
+            {/* Profile photo preview */}
+            {(photoPreview || user?.profile?.profile_photo_url) && (
+              <div className="flex items-center gap-3">
+                <div className="h-20 w-20 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+                  <img 
+                    src={photoPreview || user?.profile?.profile_photo_url} 
+                    alt="Foto profilo" 
+                    className="h-full w-full object-cover" 
+                  />
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <p>Anteprima foto profilo</p>
+                  <p className="text-xs">Formato consigliato quadrato (es. 512x512)</p>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-2">
-              <input id="remove_profile_photo" type="checkbox" className="h-4 w-4" {...form.register('remove_profile_photo')} />
+              <input 
+                id="remove_profile_photo" 
+                type="checkbox" 
+                className="h-4 w-4" 
+                {...form.register('remove_profile_photo')} 
+              />
               <Label htmlFor="remove_profile_photo">Rimuovi foto profilo</Label>
             </div>
           </div>
@@ -136,6 +219,30 @@ export default function ProfilePage() {
           </div>
         </form>
       </Form>
+
+      <ImageCropperModal
+        open={openCropper}
+        onClose={() => {
+          setOpenCropper(false)
+          if (pendingImageURL) URL.revokeObjectURL(pendingImageURL)
+          setPendingImageURL(null)
+          setPendingOriginalName(null)
+        }}
+        imageURL={pendingImageURL || ''}
+        requiredWidth={512}
+        requiredHeight={512}
+        onCropped={(blob, previewURL) => {
+          const baseName = pendingOriginalName || 'profile_photo'
+          const filename = `cropped_${baseName}`
+          setPhoto(new File([blob], filename, { type: blob.type }))
+          setPhotoPreview(previewURL)
+          setOpenCropper(false)
+          setPendingOriginalName(null)
+          setPendingImageURL(null)
+          // Uncheck remove photo when adding new photo
+          form.setValue('remove_profile_photo', false)
+        }}
+      />
     </div>
   )
 }

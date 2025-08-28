@@ -240,8 +240,11 @@ class ApiClient {
   }
 
   // Change password
-  async changePassword(payload: { current_password: string; new_password: string; new_password_confirmation: string }): Promise<{ status: string; message: string } > {
-    return this.put(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, payload)
+  async changePassword(
+    payload: { current_password: string; new_password: string; new_password_confirmation: string },
+    options?: { skipAuthRefresh?: boolean; suppressGlobalToasts?: boolean }
+  ): Promise<{ status: string; message: string } > {
+    return this.put(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, payload, undefined, options)
   }
 
   // Update profile (partial) - multipart/form-data
