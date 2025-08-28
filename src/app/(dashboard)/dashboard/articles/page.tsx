@@ -69,6 +69,9 @@ export default function ArticlesPage() {
   const canCreate = hasPermission('create_content')
   const canEdit = hasPermission('edit_content')
   const canDelete = hasPermission('delete_content')
+  const canApprove = hasPermission('approve_articles')
+  const canReject = hasPermission('reject_articles')
+  const canPublish = hasPermission('publish_articles') || hasPermission('self_publish')
 
   useEffect(() => {
     const key = `${page}|${perPage}`
@@ -298,6 +301,177 @@ export default function ArticlesPage() {
         </Button>
         {open && (
           <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-20 py-1">
+            {/* Stato: Metti in revisione - disponibile per tutti */}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={async () => {
+                setOpen(false)
+                try {
+                  await api.post(API_ENDPOINTS.ARTICLES.REVISION(article.id), {}, undefined, { suppressGlobalToasts: true })
+                  toast.success('Articolo messo in revisione')
+                  void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                } catch (error) {
+                  if (error instanceof ApiError && error.status === 403) {
+                    toast.error('Non sei autorizzato a fare questa operazione')
+                  } else {
+                    toast.error('Aggiornamento stato non riuscito')
+                  }
+                }
+              }}
+            >
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('revision')}`} />
+              Metti in revisione
+            </button>
+
+            {/* Stato: Approva - visibile solo con permesso */}
+            {canApprove && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await api.post(API_ENDPOINTS.ARTICLES.APPROVE(article.id), {}, undefined, { suppressGlobalToasts: true })
+                    toast.success('Articolo approvato')
+                    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  }
+                }}
+              >
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('approved')}`} />
+                Approva
+              </button>
+            )}
+
+            {/* Stato: Rifiuta - visibile solo con permesso */}
+            {canReject && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await api.post(API_ENDPOINTS.ARTICLES.REJECT(article.id), {}, undefined, { suppressGlobalToasts: true })
+                    toast.success('Articolo rifiutato')
+                    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  }
+                }}
+              >
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('rejected')}`} />
+                Rifiuta
+              </button>
+            )}
+
+            {/* Stato: Pubblica - visibile solo con permesso publish_article */}
+            {canPublish && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await api.post(API_ENDPOINTS.ARTICLES.PUBLISH(article.id), {}, undefined, { suppressGlobalToasts: true })
+                    toast.success('Articolo pubblicato')
+                    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  }
+                }}
+              >
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('published')}`} />
+                Pubblica
+              </button>
+            )}
+
+            {/* Stato: Depubblica - visibile solo con permesso publish_article */}
+            {canPublish && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await api.post(API_ENDPOINTS.ARTICLES.UNPUBLISH(article.id), {}, undefined, { suppressGlobalToasts: true })
+                    toast.success('Articolo depubblicato')
+                    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  }
+                }}
+              >
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('unpublished')}`} />
+                Depubblica
+              </button>
+            )}
+
+            {/* Stato: Archivia - visibile solo con permesso publish_article */}
+            {canPublish && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await api.post(API_ENDPOINTS.ARTICLES.ARCHIVE(article.id), {}, undefined, { suppressGlobalToasts: true })
+                    toast.success('Articolo archiviato')
+                    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 403) {
+                      toast.error('Non sei autorizzato a fare questa operazione')
+                    } else {
+                      toast.error('Aggiornamento stato non riuscito')
+                    }
+                  }
+                }}
+              >
+                <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('archived')}`} />
+                Archivia
+              </button>
+            )}
+
+            {/* Stato: Rendi Bozza - disponibile per tutti */}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={async () => {
+                setOpen(false)
+                try {
+                  await api.post(API_ENDPOINTS.ARTICLES.DRAFT(article.id), {}, undefined, { suppressGlobalToasts: true })
+                  toast.success('Articolo reso bozza')
+                  void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+                } catch (error) {
+                  if (error instanceof ApiError && error.status === 403) {
+                    toast.error('Non sei autorizzato a fare questa operazione')
+                  } else {
+                    toast.error('Aggiornamento stato non riuscito')
+                  }
+                }
+              }}
+            >
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('draft')}`} />
+              Rendi Bozza
+            </button>
+
             {article.status === 'published' && article.show_link ? (
               <a
                 href={article.show_link}

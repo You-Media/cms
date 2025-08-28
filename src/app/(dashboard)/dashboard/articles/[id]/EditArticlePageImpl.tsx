@@ -22,8 +22,31 @@ import { APP_ROUTES } from '@/config/routes'
 
 type ArticleType = '' | 'Notizia' | 'Editoriale'
 
-// Dedupe concurrent loads (avoid double show in React StrictMode/dev)
-const loadingArticleIds = new Set<string>()
+// Simple in-memory cache to avoid duplicate fetches in React StrictMode (dev)
+const articleDetailCache = new Map<string, any>()
+// Track in-flight loads to dedupe concurrent requests
+const articleDetailInflight = new Map<string, Promise<any>>()
+
+// Deterministic color palette for category parent-based chips
+const CATEGORY_COLOR_CLASSES = [
+  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+]
+
+function getCategoryChipClasses(cat: { parent?: { slug?: string | null } | null }) {
+  const key = (cat?.parent?.slug || 'root').toString().toLowerCase()
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0
+  }
+  const idx = Math.abs(hash) % CATEGORY_COLOR_CLASSES.length
+  return CATEGORY_COLOR_CLASSES[idx]
+}
 
 type ExistingGalleryItem = {
   id: number
@@ -83,7 +106,7 @@ export default function EditArticlePageImpl() {
   // Categories
   const [openCategoryModal, setOpenCategoryModal] = useState(false)
   const [openAuthorModal, setOpenAuthorModal] = useState(false)
-  const [selectedCategories, setSelectedCategories] = useState<Array<{ id: number; title: string }>>([])
+  const [selectedCategories, setSelectedCategories] = useState<Array<{ id: number; title: string; parent: { id: number; title: string; slug: string } | null }>>([])
   const categoryIds = useMemo(() => selectedCategories.map((c) => c.id), [selectedCategories])
 
   // Tags
@@ -126,16 +149,13 @@ export default function EditArticlePageImpl() {
   useEffect(() => {
     if (!id) return
     const key = String(id)
-    if (loadingArticleIds.has(key)) return
-    loadingArticleIds.add(key)
     let active = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(key), undefined, { suppressGlobalToasts: true })
-        const d = (res as any)?.data || res
-        const article = d?.data || d
 
+    // If cached, hydrate synchronously and skip fetch
+    const cached = articleDetailCache.get(key)
+    if (cached) {
+      try {
+        const article = cached
         const titleV = article?.title ?? ''
         const subtitleV = article?.subtitle ?? ''
         const contentV = article?.content ?? ''
@@ -166,7 +186,13 @@ export default function EditArticlePageImpl() {
         const videoUrlV = article?.video_url ?? ''
         const typeV: ArticleType = 'Notizia'
         const catList = Array.isArray(article?.categories) ? article.categories : []
-        const selCats = catList.map((c: any) => ({ id: Number(c.id), title: c.title || c.name || `#${c.id}` }))
+        const selCats = catList.map((c: any) => ({
+          id: Number(c.id),
+          title: c.title || c.name || `#${c.id}`,
+          parent: (c?.parent && typeof c.parent === 'object')
+            ? { id: Number(c.parent.id), title: String(c.parent.title || ''), slug: String(c.parent.slug || '') }
+            : null,
+        }))
         const tagList = Array.isArray(article?.tags) ? article.tags : []
         const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
         const coverPrev = article?.cover_preview || article?.cover_url || null
@@ -220,6 +246,222 @@ export default function EditArticlePageImpl() {
           tag_ids: selTags.map((t: { id: number; name: string }) => t.id),
         }
         initialRef.current = snapshot
+        setLoading(false)
+        return () => { active = false }
+      } catch {}
+    }
+    // If a request is already in-flight for this id, attach to it instead of starting a new one
+    const inflight = articleDetailInflight.get(key)
+    if (inflight) {
+      setLoading(true)
+      inflight.then((article) => {
+        if (!active) return
+        const titleV = article?.title ?? ''
+        const subtitleV = article?.subtitle ?? ''
+        const contentV = article?.content ?? ''
+        const regionV =
+          typeof article?.region_name === 'string' && article.region_name
+            ? article.region_name
+            : (article?.region && typeof article.region === 'object' && typeof article.region.name === 'string')
+              ? article.region.name
+              : typeof article?.region === 'string'
+                ? article.region
+                : ''
+        const provinceV =
+          typeof article?.province_name === 'string' && article.province_name
+            ? article.province_name
+            : (article?.province && typeof article.province === 'object' && typeof article.province.name === 'string')
+              ? article.province.name
+              : typeof article?.province === 'string'
+                ? article.province
+                : ''
+        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const metaTitleV = article?.meta_title ?? ''
+        const metaDescriptionV = article?.meta_description ?? ''
+        const metaKeywordsV = article?.meta_keywords ?? ''
+        const priorityV: number | '' = (typeof article?.priority === 'number') ? article.priority : ''
+        const isSearchableV = article?.is_searchable === true || article?.is_searchable === 1 || article?.is_searchable === '1'
+        const authorIdV: number | '' = article?.author?.id ?? article?.author_id ?? ''
+        const authorNameV: string | null = article?.author?.name ?? article?.author_name ?? null
+        const videoUrlV = article?.video_url ?? ''
+        const typeV: ArticleType = 'Notizia'
+        const catList = Array.isArray(article?.categories) ? article.categories : []
+        const selCats = catList.map((c: any) => ({
+          id: Number(c.id),
+          title: c.title || c.name || `#${c.id}`,
+          parent: (c?.parent && typeof c.parent === 'object')
+            ? { id: Number(c.parent.id), title: String(c.parent.title || ''), slug: String(c.parent.slug || '') }
+            : null,
+        }))
+        const tagList = Array.isArray(article?.tags) ? article.tags : []
+        const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
+        const coverPrev = article?.cover_preview || article?.cover_url || null
+        const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
+        const exGallery: ExistingGalleryItem[] = galleryList
+          .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
+          .filter((g: ExistingGalleryItem) => g.url)
+
+        setTitle(titleV)
+        setSubtitle(subtitleV)
+        setContent(contentV)
+        setRegionName(regionV)
+        setProvinceName(provinceV)
+        setPublishedAt(publishedV)
+        setMetaTitle(metaTitleV)
+        setMetaDescription(metaDescriptionV)
+        setMetaKeywords(metaKeywordsV)
+        setPriority(priorityV)
+        setIsSearchable(isSearchableV)
+        setAuthorId(authorIdV)
+        setAuthorName(authorNameV)
+        setVideoUrl(videoUrlV)
+        setType(typeV)
+        setSelectedCategories(selCats)
+        setSelectedTags(selTags)
+        setCoverPreview(coverPrev)
+        setExistingGallery(exGallery)
+        setGalleryToRemove([])
+        setGalleryFiles([])
+        setGalleryPreviews([])
+        setRemoveCover(false)
+
+        const snapshot: InitialSnapshot = {
+          title: titleV,
+          subtitle: subtitleV,
+          content: contentV,
+          region_name: regionV,
+          province_name: provinceV,
+          published_at: publishedV,
+          meta_title: metaTitleV,
+          meta_description: metaDescriptionV,
+          meta_keywords: metaKeywordsV,
+          priority: priorityV,
+          is_searchable: isSearchableV,
+          author_id: authorIdV,
+          video_url: videoUrlV,
+          type: typeV,
+          category_ids: selCats.map((c: { id: number; title: string }) => c.id),
+          tag_ids: selTags.map((t: { id: number; name: string }) => t.id),
+        }
+        initialRef.current = snapshot
+      }).catch((error) => {
+        if (error instanceof ApiError && error.status === 404) {
+          toast.error('Articolo non trovato')
+          router.push(APP_ROUTES.DASHBOARD.ARTICLES.LIST)
+        } else {
+          toast.error('Impossibile caricare i dettagli')
+        }
+      }).finally(() => { if (active) setLoading(false) })
+      return () => { active = false }
+    }
+    ;(async () => {
+      try {
+        setLoading(true)
+        let p = articleDetailInflight.get(key)
+        if (!p) {
+          p = (async () => {
+            const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(key), undefined, { suppressGlobalToasts: true })
+            const d = (res as any)?.data || res
+            const art = d?.data || d
+            try { articleDetailCache.set(key, art) } catch {}
+            return art
+          })()
+          articleDetailInflight.set(key, p)
+        }
+        const article = await p
+
+        const titleV = article?.title ?? ''
+        const subtitleV = article?.subtitle ?? ''
+        const contentV = article?.content ?? ''
+        const regionV =
+          typeof article?.region_name === 'string' && article.region_name
+            ? article.region_name
+            : (article?.region && typeof article.region === 'object' && typeof article.region.name === 'string')
+              ? article.region.name
+              : typeof article?.region === 'string'
+                ? article.region
+                : ''
+        const provinceV =
+          typeof article?.province_name === 'string' && article.province_name
+            ? article.province_name
+            : (article?.province && typeof article.province === 'object' && typeof article.province.name === 'string')
+              ? article.province.name
+              : typeof article?.province === 'string'
+                ? article.province
+                : ''
+        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const metaTitleV = article?.meta_title ?? ''
+        const metaDescriptionV = article?.meta_description ?? ''
+        const metaKeywordsV = article?.meta_keywords ?? ''
+        const priorityV: number | '' = (typeof article?.priority === 'number') ? article.priority : ''
+        const isSearchableV = article?.is_searchable === true || article?.is_searchable === 1 || article?.is_searchable === '1'
+        const authorIdV: number | '' = article?.author?.id ?? article?.author_id ?? ''
+        const authorNameV: string | null = article?.author?.name ?? article?.author_name ?? null
+        const videoUrlV = article?.video_url ?? ''
+        const typeV: ArticleType = 'Notizia'
+        const catList = Array.isArray(article?.categories) ? article.categories : []
+        const selCats = catList.map((c: any) => ({
+          id: Number(c.id),
+          title: c.title || c.name || `#${c.id}`,
+          parent: (c?.parent && typeof c.parent === 'object')
+            ? { id: Number(c.parent.id), title: String(c.parent.title || ''), slug: String(c.parent.slug || '') }
+            : null,
+        }))
+        const tagList = Array.isArray(article?.tags) ? article.tags : []
+        const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
+        const coverPrev = article?.cover_preview || article?.cover_url || null
+        const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
+        const exGallery: ExistingGalleryItem[] = galleryList
+          .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
+          .filter((g: ExistingGalleryItem) => g.url)
+
+        if (!active) return
+
+        setTitle(titleV)
+        setSubtitle(subtitleV)
+        setContent(contentV)
+        setRegionName(regionV)
+        setProvinceName(provinceV)
+        setPublishedAt(publishedV)
+        setMetaTitle(metaTitleV)
+        setMetaDescription(metaDescriptionV)
+        setMetaKeywords(metaKeywordsV)
+        setPriority(priorityV)
+        setIsSearchable(isSearchableV)
+        setAuthorId(authorIdV)
+        setAuthorName(authorNameV)
+        setVideoUrl(videoUrlV)
+        setType(typeV)
+        setSelectedCategories(selCats)
+        setSelectedTags(selTags)
+        setCoverPreview(coverPrev)
+        setExistingGallery(exGallery)
+        setGalleryToRemove([])
+        setGalleryFiles([])
+        setGalleryPreviews([])
+        setRemoveCover(false)
+
+        const snapshot: InitialSnapshot = {
+          title: titleV,
+          subtitle: subtitleV,
+          content: contentV,
+          region_name: regionV,
+          province_name: provinceV,
+          published_at: publishedV,
+          meta_title: metaTitleV,
+          meta_description: metaDescriptionV,
+          meta_keywords: metaKeywordsV,
+          priority: priorityV,
+          is_searchable: isSearchableV,
+          author_id: authorIdV,
+          video_url: videoUrlV,
+          type: typeV,
+          category_ids: selCats.map((c: { id: number; title: string }) => c.id),
+          tag_ids: selTags.map((t: { id: number; name: string }) => t.id),
+        }
+        initialRef.current = snapshot
+        // Ensure inflight cleared for this key
+        if (articleDetailInflight.get(key) === p) articleDetailInflight.delete(key)
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           toast.error('Articolo non trovato')
@@ -229,7 +471,6 @@ export default function EditArticlePageImpl() {
         }
       } finally {
         if (active) setLoading(false)
-        loadingArticleIds.delete(key)
       }
     })()
     return () => { active = false }
@@ -263,8 +504,8 @@ export default function EditArticlePageImpl() {
     )
   }
 
-  function addCategory(cat: { id: number; title: string }) {
-    setSelectedCategories((prev) => prev.some((c) => c.id === cat.id) ? prev : [...prev, { id: cat.id, title: cat.title }])
+  function addCategory(cat: { id: number; title: string; parent: { id: number; title: string; slug: string } | null }) {
+    setSelectedCategories((prev) => prev.some((c) => c.id === cat.id) ? prev : [...prev, { id: cat.id, title: cat.title, parent: cat.parent }])
   }
   function removeCategory(id: number) {
     setSelectedCategories((prev) => prev.filter((c) => c.id !== id))
@@ -558,6 +799,7 @@ export default function EditArticlePageImpl() {
           tag_ids: selTags.map((t: { id: number; name: string }) => t.id),
         }
         initialRef.current = snapshot
+        try { articleDetailCache.set(String(id), article) } catch {}
       } catch {}
     } catch (error) {
       if (error instanceof ApiError) {
@@ -747,7 +989,7 @@ export default function EditArticlePageImpl() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {selectedCategories.map((c) => (
-                    <span key={c.id} className="inline-flex items-center gap-2 px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    <span key={c.id} className={`inline-flex items-center gap-2 px-2.5 py-0.5 text-xs font-medium rounded-full ${getCategoryChipClasses(c)}`}>
                       {c.title}
                       <button type="button" className="ml-1" onClick={() => removeCategory(c.id)} aria-label="Rimuovi categoria">
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -810,7 +1052,10 @@ export default function EditArticlePageImpl() {
                     title={metaTitle}
                     description={metaDescription}
                     contentHTML={content}
-                    focusKeyphrase={''}
+                    pageTitle={title}
+                    subtitle={subtitle}
+                    keywords={metaKeywords}
+                    autoRunOnMount
                     locale="it_IT"
                   />
                 </div>
@@ -939,7 +1184,7 @@ export default function EditArticlePageImpl() {
       <CategorySelectModal
         open={openCategoryModal}
         onClose={() => setOpenCategoryModal(false)}
-        onSelect={(c) => { addCategory({ id: c.id, title: c.title }) }}
+        onSelect={(c) => { addCategory({ id: c.id, title: c.title, parent: c.parent ? { id: c.parent.id, title: c.parent.title, slug: c.parent.slug } : null }) }}
       />
       <TagSelectModal
         open={openTagModal}

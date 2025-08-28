@@ -1,4 +1,25 @@
-'use client'
+"use client"
+
+// Deterministic color palette for category parent-based chips (shared with edit page)
+const CATEGORY_COLOR_CLASSES = [
+  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+]
+
+function getCategoryChipClasses(cat: { parent?: { slug?: string | null } | null }) {
+  const key = (cat?.parent?.slug || 'root').toString().toLowerCase()
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0
+  }
+  const idx = Math.abs(hash) % CATEGORY_COLOR_CLASSES.length
+  return CATEGORY_COLOR_CLASSES[idx]
+}
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -59,7 +80,7 @@ export default function NewArticlePage() {
   // Categories multi-select via modal
   const [openCategoryModal, setOpenCategoryModal] = useState(false)
   const [openAuthorModal, setOpenAuthorModal] = useState(false)
-  const [selectedCategories, setSelectedCategories] = useState<Array<{ id: number; title: string }>>([])
+  const [selectedCategories, setSelectedCategories] = useState<Array<{ id: number; title: string; parent: { id: number; title: string; slug: string } | null }>>([])
   const categoryIds = useMemo(() => selectedCategories.map((c) => c.id), [selectedCategories])
 
   // Tags multi-select via simple search (best-effort)
@@ -104,8 +125,8 @@ export default function NewArticlePage() {
     )
   }
 
-  function addCategory(cat: { id: number; title: string }) {
-    setSelectedCategories((prev) => prev.some((c) => c.id === cat.id) ? prev : [...prev, { id: cat.id, title: cat.title }])
+  function addCategory(cat: { id: number; title: string; parent: { id: number; title: string; slug: string } | null }) {
+    setSelectedCategories((prev) => prev.some((c) => c.id === cat.id) ? prev : [...prev, { id: cat.id, title: cat.title, parent: cat.parent }])
   }
   function removeCategory(id: number) {
     setSelectedCategories((prev) => prev.filter((c) => c.id !== id))
@@ -171,6 +192,14 @@ export default function NewArticlePage() {
       toast.error('Seleziona un autore')
       return false
     }
+    if (categoryIds.length === 0) {
+      toast.error('Seleziona almeno una categoria')
+      return false
+    }
+    if (!publishedAt) {
+      toast.error('La data di pubblicazione è obbligatoria')
+      return false
+    }
     if (metaDescription && metaDescription.length > 160) {
       toast.error('Meta description troppo lunga (max 160)')
       return false
@@ -208,7 +237,7 @@ export default function NewArticlePage() {
 
     setSubmitting(true)
     try {
-      await api.post(API_ENDPOINTS.ARTICLES.CREATE, formData as any)
+      await api.post(API_ENDPOINTS.ARTICLES.CREATE, formData as any, undefined, { suppressGlobalToasts: true })
       toast.success('Articolo creato con successo')
       router.push(APP_ROUTES.DASHBOARD.ARTICLES.LIST)
     } catch (error) {
@@ -369,7 +398,7 @@ export default function NewArticlePage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Categorie</h3>
+              <h3 className="text-base font-semibold">Categorie *</h3>
               <Button type="button" size="sm"  onClick={() => setOpenCategoryModal(true)}>Aggiungi</Button>
             </div>
             {selectedCategories.length === 0 ? (
@@ -377,7 +406,7 @@ export default function NewArticlePage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {selectedCategories.map((c) => (
-                  <span key={c.id} className="inline-flex items-center gap-2 px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  <span key={c.id} className={`inline-flex items-center gap-2 px-2.5 py-0.5 text-xs font-medium rounded-full ${getCategoryChipClasses(c)}`}>
                     {c.title}
                     <button type="button" className="ml-1" onClick={() => removeCategory(c.id)} aria-label="Rimuovi categoria">
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -440,7 +469,9 @@ export default function NewArticlePage() {
                   title={metaTitle}
                   description={metaDescription}
                   contentHTML={content}
-                  focusKeyphrase={''}
+                  pageTitle={title}
+                  subtitle={subtitle}
+                  keywords={metaKeywords}
                   locale="it_IT"
                 />
               </div>
@@ -528,8 +559,8 @@ export default function NewArticlePage() {
                 <p className="text-xs text-gray-500">Il tipo è impostato a Notizia</p>
               </div>
               <div className="space-y-2">
-                <Label>Data pubblicazione</Label>
-                <Input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
+                <Label>Data pubblicazione *</Label>
+                <Input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} required />
               </div>
             </div>
           </div>
@@ -545,7 +576,7 @@ export default function NewArticlePage() {
       <CategorySelectModal
         open={openCategoryModal}
         onClose={() => setOpenCategoryModal(false)}
-        onSelect={(c) => { addCategory({ id: c.id, title: c.title }) }}
+        onSelect={(c) => { addCategory({ id: c.id, title: c.title, parent: c.parent ? { id: c.parent.id, title: c.parent.title, slug: c.parent.slug } : null }) }}
       />
       <TagSelectModal
         open={openTagModal}

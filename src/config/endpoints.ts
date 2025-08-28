@@ -67,6 +67,13 @@ export const API_ENDPOINTS = {
     DETAIL: (id: number | string) => `/articles/${id}`,
     UPDATE: (id: number | string) => `/articles/${id}`,
     DELETE: (id: number | string) => `/articles/${id}`,
+    APPROVE: (id: number | string) => `/articles/${id}/approve`,
+    REJECT: (id: number | string) => `/articles/${id}/reject`,
+    REVISION: (id: number | string) => `/articles/${id}/revision`,
+    PUBLISH: (id: number | string) => `/articles/${id}/publish`,
+    UNPUBLISH: (id: number | string) => `/articles/${id}/unpublish`,
+    ARCHIVE: (id: number | string) => `/articles/${id}/archive`,
+    DRAFT: (id: number | string) => `/articles/${id}/draft`,
   },
 } as const
 
