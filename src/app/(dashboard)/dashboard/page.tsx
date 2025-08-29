@@ -6,15 +6,34 @@ import { useAuthStore } from '@/stores/auth-store'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { APP_ROUTES } from '@/config/routes'
+import { roleLabelIt } from '@/types/roles'
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const { hasPermission, hasAnyPermission } = useAuth()
+  const { selectedSite, hasAnyRole } = useAuth()
   const fetchMe = useAuthStore((s) => s.fetchMe)
   const didFetchRef = useRef(false)
 
-  // Check if user can create articles
+  // Quick action permissions
   const canCreateArticle = hasAnyPermission(['create_content'])
+  const canCreateBanner = hasAnyPermission(['create_banner'])
+  const canCreateUser = hasAnyPermission([
+    'manage_users',
+    'manage_publishers',
+    'manage_editors_in_chief',
+    'manage_advertising_managers',
+    'manage_journalists',
+  ])
+  const canCreateCategory = (
+    selectedSite === 'editoria' &&
+    hasAnyRole(['ADMIN', 'Editor', 'EditorInChief']) &&
+    hasPermission('manage_categories')
+  )
+  const canCreateTag = (
+    hasAnyRole(['ADMIN', 'Editor', 'EditorInChief']) &&
+    hasPermission('manage_tags')
+  )
 
   useEffect(() => {
     if (didFetchRef.current) return
@@ -56,7 +75,7 @@ export default function DashboardPage() {
                   key={role}
                   className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
                 >
-                  {role}
+                  {roleLabelIt(role)}
                 </span>
               ))}
             </div>
@@ -65,7 +84,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      {canCreateArticle && (
+      {(canCreateArticle || canCreateBanner || canCreateUser || canCreateCategory || canCreateTag) && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
@@ -73,71 +92,70 @@ export default function DashboardPage() {
                 Azioni Rapide
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                Crea nuovi contenuti per il tuo sito
+                Crea rapidamente nuove risorse
               </p>
             </div>
-            <Link href={APP_ROUTES.DASHBOARD.ARTICLES.NEW}>
-              <Button className="bg-amber-600 hover:bg-amber-700 text-white">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Crea Articolo
-              </Button>
-            </Link>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {canCreateCategory && (
+              <Link href={`${APP_ROUTES.DASHBOARD.CATEGORIES.LIST}?create=1`}>
+                <Button>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  Nuova categoria
+                </Button>
+              </Link>
+            )}
+
+            {canCreateTag && (
+              <Link href={`${APP_ROUTES.DASHBOARD.TAGS.LIST}?create=1`}>
+                <Button>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1 1 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Nuovo tag
+                </Button>
+              </Link>
+            )}
+            {canCreateArticle && (
+              <Link href={APP_ROUTES.DASHBOARD.ARTICLES.NEW}>
+                <Button>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6M9 12h6M9 16h6" />
+                  </svg>
+                  Nuovo articolo
+                </Button>
+              </Link>
+            )}
+            {canCreateBanner && (
+              <Link href={APP_ROUTES.DASHBOARD.BANNERS.NEW}>
+                <Button>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10M4 18h8" />
+                  </svg>
+                  Nuovo banner
+                </Button>
+              </Link>
+            )}
+            {canCreateUser && (
+              <Link href={APP_ROUTES.DASHBOARD.USERS.NEW}>
+                <Button>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 21v-2a4 4 0 00-3-3.87" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  Nuovo utente
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       )}
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Contenuti</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">--</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Media</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">--</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Utenti</p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">--</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Recent activity */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">

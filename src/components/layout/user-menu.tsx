@@ -5,6 +5,7 @@ import type { User } from '@/types/auth'
 import { LogoutButton } from '@/components/layout/logout-button'
 import { useRouter } from 'next/navigation'
 import { APP_ROUTES } from '@/config/routes'
+import { roleLabelIt } from '@/types/roles'
 
 interface UserMenuProps {
   user: User
@@ -73,7 +74,7 @@ export function UserMenu({ user }: UserMenuProps) {
                       key={role}
                       className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
                     >
-                      {role}
+                      {roleLabelIt(role)}
                     </span>
                   ))}
                 </div>

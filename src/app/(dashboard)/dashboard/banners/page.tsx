@@ -24,7 +24,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 export default function BannersPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
 
-  const allowedRoles = ['PUBLISHER', 'EDITOR_IN_CHIEF', 'ADVERTISING_MANAGER']
+  const allowedRoles = ['PUBLISHER', 'ADVERTISING_MANAGER']
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles) && hasPermission('view_banners')
 
   if (!canView) {

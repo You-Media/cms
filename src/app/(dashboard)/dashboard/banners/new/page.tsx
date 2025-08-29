@@ -20,7 +20,7 @@ type NewBannerPageProps = { initialBanner?: Banner; isEdit?: boolean }
 
 export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: NewBannerPageProps) {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
-  const allowedRoles = ['PUBLISHER', 'EDITOR_IN_CHIEF', 'ADVERTISING_MANAGER']
+  const allowedRoles = ['PUBLISHER', 'ADVERTISING_MANAGER']
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles)
   const canCreate = hasPermission('create_banner')
 

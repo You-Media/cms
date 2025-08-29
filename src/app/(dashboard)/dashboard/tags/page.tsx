@@ -17,7 +17,7 @@ import { ApiError } from '@/lib/api'
 import { Tag, CreateTagRequest } from '@/types/tags'
 
 export default function TagsPage() {
-  const { hasAnyRole, canManageTags } = useAuth()
+  const { canManageTags } = useAuth()
   const {
     tags,
     loading,
@@ -52,8 +52,17 @@ export default function TagsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
-  // Controllo accesso basato sui ruoli
-  if (!hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
+  // Auto-open create modal via query param (?create=1)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('create') === '1' && canManageTags) {
+      setIsCreateModalOpen(true)
+    }
+  }, [canManageTags])
+
+  // Controllo accesso basato sui permessi
+  if (!canManageTags) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">403 - Accesso negato</h1>

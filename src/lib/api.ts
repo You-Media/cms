@@ -250,7 +250,7 @@ class ApiClient {
   // Update profile (partial) - multipart/form-data
   async updateMyProfile(formData: FormData): Promise<{ status: string; message: string; data: any }> {
     // Do not set content-type, the client handles boundary
-    return this.patch(API_ENDPOINTS.PROFILE.UPDATE_PARTIAL, formData)
+    return this.post(API_ENDPOINTS.PROFILE.UPDATE_PARTIAL, formData)
   }
 
   // Metodo specifico per generare nuovo OTP

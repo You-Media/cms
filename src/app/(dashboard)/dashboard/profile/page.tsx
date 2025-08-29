@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
+  const isDefaultPhoto = (photoPreview && photoPreview.includes('images/default-propic.png')) || false
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -49,6 +51,13 @@ export default function ProfilePage() {
       remove_profile_photo: false,
     },
   })
+
+  // Initialize photo preview with existing user photo
+  useEffect(() => {
+    if (user?.profile?.profile_photo) {
+      setPhotoPreview(user.profile.profile_photo)
+    }
+  }, [user?.profile?.profile_photo])
 
   const onSubmit = async (values: ProfileForm) => {
     if (isSubmitting) return
@@ -70,9 +79,8 @@ export default function ProfilePage() {
       if (photo) {
         formData.append('profile_photo', photo)
       }
-      if (values.remove_profile_photo) {
-        formData.append('remove_profile_photo', '1')
-      }
+      // Always pass remove_profile_photo as 0 or 1
+      formData.append('remove_profile_photo', removePhoto ? '1' : '0')
 
       const res = await api.updateMyProfile(formData)
       if (res?.data) {
@@ -138,77 +146,71 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="space-y-4">
-            <Label>Foto profilo</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null
-                if (!file) return
-                const url = URL.createObjectURL(file)
-                setPendingImageURL(url)
-                setPendingOriginalName(file.name || null)
-                setOpenCropper(true)
-              }}
-            />
-            <div className="flex items-center gap-3">
-              <Button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()} 
-                className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Seleziona immagine
-              </Button>
-              {photoPreview && (
-                <Button
+          <div>
+            <Label className="text-sm">Foto profilo</Label>
+            <div className="relative">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
+                <button
                   type="button"
-                  variant="secondary"
-                  className="inline-flex items-center gap-2"
-                  onClick={() => { 
-                    setPhoto(null); 
-                    setPhotoPreview(null);
-                    form.setValue('remove_profile_photo', true);
+                  title={photoPreview ? 'Ingrandisci anteprima' : ''}
+                  className="h-40 md:h-52 w-full flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+                  onClick={() => {
+                    if (!photoPreview) return
+                    const w = window.open('', '_blank')
+                    if (w) {
+                      w.document.write(`<img src=\"${photoPreview}\" style=\"max-width:100%;height:auto;\" />`)
+                    }
                   }}
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Rimuovi foto
-                </Button>
-              )}
-            </div>
-            
-            {/* Profile photo preview */}
-            {(photoPreview || user?.profile?.profile_photo_url) && (
-              <div className="flex items-center gap-3">
-                <div className="h-20 w-20 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-                  <img 
-                    src={photoPreview || user?.profile?.profile_photo_url} 
-                    alt="Foto profilo" 
-                    className="h-full w-full object-cover" 
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="anteprima" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Trascina o seleziona un'immagine</div>
+                  )}
+                </button>
+                <div className="space-y-2">
+                  <input
+                    id="profile_file_input"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      if (!file) return
+                      const url = URL.createObjectURL(file)
+                      setPendingImageURL(url)
+                      setPendingOriginalName(file.name || null)
+                      setOpenCropper(true)
+                    }}
                   />
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  <p>Anteprima foto profilo</p>
-                  <p className="text-xs">Formato consigliato quadrato (es. 512x512)</p>
+                  <div className="flex items-center gap-3">
+                    <Button type="button" onClick={() => {
+                      const inputEl = fileInputRef.current || (document.getElementById('profile_file_input') as HTMLInputElement | null)
+                      if (inputEl) {
+                        // Reset value so selecting the same file triggers onChange
+                        inputEl.value = ''
+                        inputEl.click()
+                      }
+                    }} className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      Seleziona immagine
+                    </Button>
+                    {photoPreview && !isDefaultPhoto && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="inline-flex items-center gap-2"
+                        onClick={() => { setRemovePhoto(true); setPhoto(null); setPhotoPreview(null) }}
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        Rimuovi foto
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">Formato consigliato quadrato (es. 512x512)</p>
                 </div>
               </div>
-            )}
-            
-            <div className="flex items-center space-x-2">
-              <input 
-                id="remove_profile_photo" 
-                type="checkbox" 
-                className="h-4 w-4" 
-                {...form.register('remove_profile_photo')} 
-              />
-              <Label htmlFor="remove_profile_photo">Rimuovi foto profilo</Label>
             </div>
           </div>
 
@@ -240,7 +242,7 @@ export default function ProfilePage() {
           setPendingOriginalName(null)
           setPendingImageURL(null)
           // Uncheck remove photo when adding new photo
-          form.setValue('remove_profile_photo', false)
+          setRemovePhoto(false)
         }}
       />
     </div>

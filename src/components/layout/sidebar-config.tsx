@@ -25,8 +25,8 @@ export function buildSidebarNavigation(
     },
   ]
 
-  if (selectedSite === 'editoria' && hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
-    // Mostra categorie se l'utente ha i permessi per gestirle
+  // Categorie e Tag: visibilità basata solo sui permessi (non sui ruoli)
+  if (selectedSite === 'editoria') {
     if (hasPermission('manage_categories')) {
       items.push({
         name: 'Categorie',
@@ -38,15 +38,14 @@ export function buildSidebarNavigation(
         ),
       })
     }
-    
-    // Mostra tag se l'utente ha i permessi per gestirli
+
     if (hasPermission('manage_tags')) {
       items.push({
         name: 'Tag',
         href: APP_ROUTES.DASHBOARD.TAGS.LIST,
         icon: (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1 1 0 013 12V7a4 4 0 014-4z" />
           </svg>
         ),
       })
@@ -69,7 +68,7 @@ export function buildSidebarNavigation(
    
   }
 
-  if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'EditorInChief', 'AdvertisingManager'])) {
+  if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'AdvertisingManager', 'Publisher'])) {
     // Mostra banner se l'utente ha il permesso di visualizzarli
     if (hasPermission('view_banners')) {
       items.push({
