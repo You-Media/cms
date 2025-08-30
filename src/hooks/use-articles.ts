@@ -19,6 +19,7 @@ export type Article = {
   region?: string
   province?: string
   cover_preview?: string
+  weekly_views?: number
 }
 
 export function useArticles() {

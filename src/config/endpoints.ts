@@ -63,6 +63,7 @@ export const API_ENDPOINTS = {
   ARTICLES: {
     FILTER: '/me/articles/filter',
     SEARCH: '/articles/search',
+    TOP_WEEKLY: '/articles/top-weekly',
     CREATE: '/articles',
     DETAIL: (id: number | string) => `/articles/${id}`,
     UPDATE: (id: number | string) => `/articles/${id}`,
@@ -70,6 +71,7 @@ export const API_ENDPOINTS = {
     APPROVE: (id: number | string) => `/articles/${id}/approve`,
     REJECT: (id: number | string) => `/articles/${id}/reject`,
     REVISION: (id: number | string) => `/articles/${id}/revision`,
+    ADJUST_VIEWS: (id: number | string) => `/articles/${id}/views/adjust`,
     PUBLISH: (id: number | string) => `/articles/${id}/publish`,
     UNPUBLISH: (id: number | string) => `/articles/${id}/unpublish`,
     ARCHIVE: (id: number | string) => `/articles/${id}/archive`,

@@ -200,6 +200,15 @@ export default function ArticlesPage() {
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
     {
+      key: 'weekly_views',
+      header: 'Vis. settimana',
+      cell: (a) => (
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{typeof a.weekly_views === 'number' ? a.weekly_views : '-'}</span>
+      ),
+      thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-32',
+      tdClassName: 'px-6 py-4 whitespace-nowrap',
+    },
+    {
       key: 'categories',
       header: 'Categoria',
       cell: (a) => {

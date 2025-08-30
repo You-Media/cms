@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
 import Link from 'next/link'
@@ -10,6 +10,9 @@ import { roleLabelIt } from '@/types/roles'
 import { useNotifications } from '@/hooks/use-notifications'
 import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
 import { PaginationBar } from '@/components/table/PaginationBar'
+import { useTopWeeklyArticles } from '@/hooks/use-top-weekly-articles'
+import { statusColorClass } from '@/types/articles'
+import AdjustWeeklyViewsModal from '@/components/forms/adjust-weekly-views-modal'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -92,6 +95,25 @@ export default function DashboardPage() {
     },
   ], [])
 
+  // Top weekly articles (only for 'editoria')
+  const { items: topWeekly, loading: topWeeklyLoading, fetchTop } = useTopWeeklyArticles()
+  const didLoadTopRef = useRef(false)
+  const [adjustOpen, setAdjustOpen] = useState(false)
+  useEffect(() => {
+    if (selectedSite === 'editoria' && !didLoadTopRef.current) {
+      didLoadTopRef.current = true
+      fetchTop()
+    }
+  }, [selectedSite, fetchTop])
+
+  const formatDateSafe = (value?: string | null) => {
+    if (!value) return '-'
+    const d = new Date(value)
+    // Se non è una data ISO valida, restituisci la stringa così com'è (es. "3 ore fa")
+    if (Number.isNaN(d.getTime())) return value
+    return d.toLocaleDateString('it-IT')
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -133,6 +155,77 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Top weekly articles - only for 'editoria' */}
+      {selectedSite === 'editoria' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Top 3 articoli della settimana</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Articoli più letti negli ultimi 7 giorni</p>
+            </div>
+            {hasAnyRole(['ADMIN']) && (
+              <Button type="button" onClick={() => setAdjustOpen(true)} className="inline-flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" /></svg>
+                Modifica articoli in evidenza
+              </Button>
+            )}
+          </div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {topWeeklyLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                </div>
+              ))
+            ) : (Array.isArray(topWeekly) && topWeekly.length > 0 ? topWeekly.map((a) => (
+              <div key={a.id} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
+                {a.cover_preview ? (
+                  <div className="h-36 w-full bg-gray-100 dark:bg-gray-900 overflow-hidden">
+                    <img src={a.cover_preview} alt={a.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : null}
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          title={a.status ?? undefined}
+                          className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${statusColorClass(a.status)}`}
+                        />
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white whitespace-normal break-words" title={a.title}>{a.title}</div>
+                      </div>
+                      {/* meta spostata nel footer */}
+                    </div>
+                    {typeof a.weekly_views === 'number' ? (
+                      <div className="ml-3 inline-flex items-center px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold" title="Visualizzazioni settimanali">
+                        <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18" /></svg>
+                        {a.weekly_views}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between mt-auto">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{a.author?.name || '—'}</div>
+                    {a.show_link ? (
+                      <a href={a.show_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700">
+                        Vedi articolo
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0 0L10 21l-7-7L14 3z" /></svg>
+                      </a>
+                    ) : <div />}
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="col-span-3">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-6">Nessun dato disponibile</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <AdjustWeeklyViewsModal open={adjustOpen} onClose={() => setAdjustOpen(false)} onSuccess={() => fetchTop()} />
 
       {/* Quick Actions */}
       {(canCreateArticle || canCreateBanner || canCreateUser || canCreateCategory || canCreateTag) && (
