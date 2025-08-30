@@ -2,7 +2,7 @@ import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/config/endpoints'
 import type { CategoriesSearchParams, CategoriesSearchResponse, CreateCategoryPayload, UpdateCategoryPayload, CategoryTreeResponse } from '@/types/categories'
 
-function buildQueryString(params: Record<string, unknown>): string {
+function buildQueryString(params: CategoriesSearchParams): string {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {

@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { APP_ROUTES } from '@/config/routes'
 import { roleLabelIt } from '@/types/roles'
+import { useNotifications } from '@/hooks/use-notifications'
+import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
+import { PaginationBar } from '@/components/table/PaginationBar'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -27,11 +30,12 @@ export default function DashboardPage() {
   ])
   const canCreateCategory = (
     selectedSite === 'editoria' &&
-    hasAnyRole(['ADMIN', 'Editor', 'EditorInChief']) &&
+    hasAnyRole(['ADMIN', 'Publisher', 'EditorInChief']) &&
     hasPermission('manage_categories')
   )
   const canCreateTag = (
-    hasAnyRole(['ADMIN', 'Editor', 'EditorInChief']) &&
+    selectedSite === 'editoria' &&
+    hasAnyRole(['ADMIN', 'Publisher', 'EditorInChief']) &&
     hasPermission('manage_tags')
   )
 
@@ -40,6 +44,53 @@ export default function DashboardPage() {
     didFetchRef.current = true
     fetchMe()
   }, [fetchMe])
+
+  const { items: notifications, loading: notificationsLoading, fetchNotifications, page: notificationsPage, perPage: notificationsPerPage, total: notificationsTotal, totalPages: notificationsTotalPages, setPage: setNotificationsPage, setPerPage: setNotificationsPerPage } = useNotifications()
+  const didLoadNotificationsRef = useRef(false)
+
+  useEffect(() => {
+    if (didLoadNotificationsRef.current) return
+    didLoadNotificationsRef.current = true
+    fetchNotifications({ page: 1, per_page: 10 })
+  }, [fetchNotifications])
+
+  const columns = useMemo<DataTableColumn<any>[]>(() => [
+    {
+      key: 'message',
+      header: 'Messaggio',
+      cell: (row) => (
+        <div className="flex flex-col">
+          <span className="text-sm text-gray-900 dark:text-white">{row.message}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{row.type}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'actor',
+      header: 'Attore',
+      cell: (row) => {
+        const actorName = row?.actor?.name || row?.actor_name || '-'
+        const avatar = row?.actor?.avatar
+        return (
+          <div className="flex items-center gap-2">
+            {avatar ? (
+              <img src={avatar} alt={actorName} className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700" />
+            )}
+            <span className="text-sm text-gray-900 dark:text-white">{actorName}</span>
+          </div>
+        )
+      },
+      thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-60',
+    },
+    {
+      key: 'created_at',
+      header: 'Data',
+      cell: (row) => <span className="text-sm text-gray-900 dark:text-white">{row.created_at ? new Date(row.created_at).toLocaleString() : ''}</span>,
+      thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-48',
+    },
+  ], [])
 
   return (
     <div className="space-y-6">
@@ -165,9 +216,32 @@ export default function DashboardPage() {
           </h3>
         </div>
         <div className="p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            Nessuna attività recente da mostrare
-          </p>
+          <DataTable
+            data={notifications}
+            loading={notificationsLoading}
+            loadingLabel="Caricamento attività..."
+            emptyTitle="Nessuna attività recente"
+            emptySubtitle="Quando accadrà qualcosa, lo vedrai qui"
+            columns={columns}
+            rowKey={(row) => row.id}
+          />
+          <div className="mt-4">
+            <PaginationBar
+              total={notificationsTotal}
+              currentPage={notificationsPage}
+              totalPages={notificationsTotalPages}
+              perPage={notificationsPerPage}
+              setPerPage={(n) => {
+                setNotificationsPerPage(n)
+                // reset page to 1 when perPage changes
+                fetchNotifications({ page: 1, per_page: n })
+              }}
+              canGoPrev={notificationsPage > 1 && !notificationsLoading}
+              canGoNext={notificationsPage < notificationsTotalPages && !notificationsLoading}
+              onPrev={() => fetchNotifications({ page: Math.max(1, notificationsPage - 1), per_page: notificationsPerPage })}
+              onNext={() => fetchNotifications({ page: Math.min(notificationsTotalPages, notificationsPage + 1), per_page: notificationsPerPage })}
+            />
+          </div>
         </div>
       </div>
     </div>

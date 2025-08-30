@@ -75,6 +75,11 @@ export const API_ENDPOINTS = {
     ARCHIVE: (id: number | string) => `/articles/${id}/archive`,
     DRAFT: (id: number | string) => `/articles/${id}/draft`,
   },
+
+  // Notifications endpoints
+  NOTIFICATIONS: {
+    INDEX: '/notifications',
+  },
 } as const
 
 // Utility function per costruire URL completi
