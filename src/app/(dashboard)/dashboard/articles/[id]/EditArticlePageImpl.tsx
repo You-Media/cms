@@ -195,11 +195,21 @@ export default function EditArticlePageImpl() {
         }))
         const tagList = Array.isArray(article?.tags) ? article.tags : []
         const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
-        const coverPrev = article?.cover_preview || article?.cover_url || null
+        let coverPrev = article?.cover_preview || article?.cover_url || null
         const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
-        const exGallery: ExistingGalleryItem[] = galleryList
+        let exGallery: ExistingGalleryItem[] = galleryList
           .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
           .filter((g: ExistingGalleryItem) => g.url)
+        // Se la gallery esiste, la prima immagine è la cover
+        if (Array.isArray(galleryList) && galleryList.length > 0) {
+          const first = galleryList[0]
+          const firstUrl = first?.preview_url || first?.url || first?.path || null
+          if (firstUrl) coverPrev = firstUrl
+        }
+        // Se la gallery è vuota, mostra almeno la cover come primo elemento
+        if (exGallery.length === 0 && coverPrev) {
+          exGallery = [{ id: 0, url: coverPrev, caption: 'Cover' }]
+        }
 
         if (!active) return
 
@@ -295,11 +305,19 @@ export default function EditArticlePageImpl() {
         }))
         const tagList = Array.isArray(article?.tags) ? article.tags : []
         const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
-        const coverPrev = article?.cover_preview || article?.cover_url || null
+        let coverPrev = article?.cover_preview || article?.cover_url || null
         const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
-        const exGallery: ExistingGalleryItem[] = galleryList
+        let exGallery: ExistingGalleryItem[] = galleryList
           .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
           .filter((g: ExistingGalleryItem) => g.url)
+        if (Array.isArray(galleryList) && galleryList.length > 0) {
+          const first = galleryList[0]
+          const firstUrl = first?.preview_url || first?.url || first?.path || null
+          if (firstUrl) coverPrev = firstUrl
+        }
+        if (exGallery.length === 0 && coverPrev) {
+          exGallery = [{ id: 0, url: coverPrev, caption: 'Cover' }]
+        }
 
         setTitle(titleV)
         setSubtitle(subtitleV)
@@ -409,11 +427,19 @@ export default function EditArticlePageImpl() {
         }))
         const tagList = Array.isArray(article?.tags) ? article.tags : []
         const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
-        const coverPrev = article?.cover_preview || article?.cover_url || null
+        let coverPrev = article?.cover_preview || article?.cover_url || null
         const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
-        const exGallery: ExistingGalleryItem[] = galleryList
+        let exGallery: ExistingGalleryItem[] = galleryList
           .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
           .filter((g: ExistingGalleryItem) => g.url)
+        if (Array.isArray(galleryList) && galleryList.length > 0) {
+          const first = galleryList[0]
+          const firstUrl = first?.preview_url || first?.url || first?.path || null
+          if (firstUrl) coverPrev = firstUrl
+        }
+        if (exGallery.length === 0 && coverPrev) {
+          exGallery = [{ id: 0, url: coverPrev, caption: 'Cover' }]
+        }
 
         if (!active) return
 
@@ -750,11 +776,19 @@ export default function EditArticlePageImpl() {
         const selCats = catList.map((c: any) => ({ id: Number(c.id), title: c.title || c.name || `#${c.id}` }))
         const tagList = Array.isArray(article?.tags) ? article.tags : []
         const selTags = tagList.map((t: any) => ({ id: Number(t.id), name: t.name || t.title || `#${t.id}` }))
-        const coverPrev = article?.cover_preview || article?.cover_url || null
+        let coverPrev = article?.cover_preview || article?.cover_url || null
         const galleryList = Array.isArray(article?.gallery) ? article.gallery : []
-        const exGallery: ExistingGalleryItem[] = galleryList
+        let exGallery: ExistingGalleryItem[] = galleryList
           .map((g: any) => ({ id: Number(g.id), url: g.preview_url || g.url || g.path || '', caption: g.caption || '' }))
           .filter((g: ExistingGalleryItem) => g.url)
+        if (Array.isArray(galleryList) && galleryList.length > 0) {
+          const first = galleryList[0]
+          const firstUrl = first?.preview_url || first?.url || first?.path || null
+          if (firstUrl) coverPrev = firstUrl
+        }
+        if (exGallery.length === 0 && coverPrev) {
+          exGallery = [{ id: 0, url: coverPrev, caption: 'Cover' }]
+        }
 
         setTitle(titleV)
         setSubtitle(subtitleV)

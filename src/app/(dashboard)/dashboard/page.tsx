@@ -171,7 +171,7 @@ export default function DashboardPage() {
               </Button>
             )}
           </div>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {topWeeklyLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
