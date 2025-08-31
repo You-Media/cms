@@ -17,7 +17,7 @@ import { ApiError } from '@/lib/api'
 import { Tag, CreateTagRequest } from '@/types/tags'
 
 export default function TagsPage() {
-  const { canManageTags } = useAuth()
+  const { hasAnyRole, canManageTags } = useAuth()
   const {
     tags,
     loading,
@@ -52,17 +52,8 @@ export default function TagsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
-  // Auto-open create modal via query param (?create=1)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('create') === '1' && canManageTags) {
-      setIsCreateModalOpen(true)
-    }
-  }, [canManageTags])
-
-  // Controllo accesso basato sui permessi
-  if (!canManageTags) {
+  // Controllo accesso basato sui ruoli
+  if (!hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">403 - Accesso negato</h1>
@@ -160,7 +151,7 @@ export default function TagsPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2} submitUseEmptyLabel={true}>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2}>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">

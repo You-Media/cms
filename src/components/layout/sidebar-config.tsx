@@ -25,8 +25,8 @@ export function buildSidebarNavigation(
     },
   ]
 
-  // Categorie e Tag: visibilità basata solo sui permessi (non sui ruoli)
-  if (selectedSite === 'editoria') {
+  if (selectedSite === 'editoria' && hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
+    // Mostra categorie se l'utente ha i permessi per gestirle
     if (hasPermission('manage_categories')) {
       items.push({
         name: 'Categorie',
@@ -38,37 +38,22 @@ export function buildSidebarNavigation(
         ),
       })
     }
-
+    
+    // Mostra tag se l'utente ha i permessi per gestirli
     if (hasPermission('manage_tags')) {
       items.push({
         name: 'Tag',
         href: APP_ROUTES.DASHBOARD.TAGS.LIST,
         icon: (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1 1 0 013 12V7a4 4 0 014-4z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
         ),
       })
     }
   }
 
-  // Articoli (visibile a Journalist, EditorInChief, Publisher)
-  if (selectedSite === 'editoria' && hasAnyRole(['Journalist', 'EditorInChief', 'Publisher'])) {
-
-      items.push({
-        name: 'Articoli',
-        href: APP_ROUTES.DASHBOARD.ARTICLES.LIST,
-        icon: (
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6M9 12h6M9 16h6" />
-          </svg>
-        ),
-      })
-   
-  }
-
-  if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'AdvertisingManager', 'Publisher'])) {
+  if (selectedSite === 'editoria' && hasAnyRole(['Editor', 'EditorInChief', 'AdvertisingManager'])) {
     // Mostra banner se l'utente ha il permesso di visualizzarli
     if (hasPermission('view_banners')) {
       items.push({
@@ -109,10 +94,7 @@ export function buildSidebarNavigation(
         href: APP_ROUTES.DASHBOARD.USERS.LIST,
         icon: (
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-            <circle cx="9" cy="7" r="4" strokeWidth={2} />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 21v-2a4 4 0 00-3-3.87" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3.13a4 4 0 010 7.75" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4h-5M2 20h5V10H2m8 10h5V14h-5" />
           </svg>
         ),
       })

@@ -46,8 +46,7 @@ export default function CategoriesPage() {
   const lastParamsRef = useRef<string>('')
 
   const siteAllowed = selectedSite === 'editoria'
-  // Accesso basato su permesso, non su ruolo
-  const rolesAllowed = true
+  const rolesAllowed = hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])
   const canManageCategories = hasPermission('manage_categories')
   const canManageSubcategories = hasPermission('manage_subcategories')
 
@@ -62,15 +61,6 @@ export default function CategoriesPage() {
     void loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
-
-  // Auto-open create modal via query param (?create=1)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('create') === '1' && canManageCategories) {
-      setIsCreateOpen(true)
-    }
-  }, [canManageCategories])
 
   async function loadData() {
     setIsLoading(true)
@@ -138,7 +128,7 @@ export default function CategoriesPage() {
     )
   }
 
-  if (!canManageCategories) {
+  if (!rolesAllowed) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">403 - Accesso negato</h1>
@@ -161,7 +151,7 @@ export default function CategoriesPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3} submitUseEmptyLabel={true}>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3}>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">
