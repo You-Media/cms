@@ -5,16 +5,24 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { searchCategories } from '@/hooks/use-categories'
-import { useArticles, type Article } from '@/hooks/use-articles'
+import type { Article } from '@/hooks/use-articles'
+import { ARTICLE_STATUS_LABEL, statusColorClass } from '@/types/articles'
+import { api, ApiError } from '@/lib/api'
+import { API_ENDPOINTS } from '@/config/endpoints'
+import { toast } from 'sonner'
 
 type ArticleSelectModalProps = {
   open: boolean
   onClose: () => void
   onSelect: (article: Article) => void
+  usePublicFilter?: boolean
 }
 
-export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleSelectModalProps) {
-  const { results, loading, search, page, totalPages, setPage } = useArticles()
+export default function ArticleSelectModal({ open, onClose, onSelect, usePublicFilter = false }: ArticleSelectModalProps) {
+  const [results, setResults] = useState<Article[]>([])
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<string | ''>('')
   const [categoryId, setCategoryId] = useState<number | ''>('')
@@ -26,21 +34,49 @@ export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleS
   // Initial fetch on open
   useEffect(() => {
     if (!open) return
-    search({ sort_by: 'recenti', per_page: 10, page: 1 })
-    setPage(1)
-  }, [open, search, setPage])
+    void doSearch(1, { initial: true })
+  }, [open])
 
-  const doSearch = useCallback((pageNum: number = 1) => {
-    const effectiveSort = (query || categoryId) ? (sortBy || undefined) : (sortBy || 'recenti')
-    search({
-      search: query || undefined,
-      sort_by: effectiveSort || undefined,
-      category_id: categoryId || undefined,
-      per_page: 10,
-      page: pageNum,
-    })
-    setPage(pageNum)
-  }, [query, sortBy, categoryId, search, setPage])
+  const doSearch = useCallback(async (pageNum: number = 1, opts?: { initial?: boolean }) => {
+    setLoading(true)
+    try {
+      const qs = new URLSearchParams()
+      if (query) qs.append('search', query)
+      if (categoryId) qs.append('category_id', String(categoryId))
+      const effectiveSort = (query || categoryId) ? (sortBy || undefined) : (sortBy || (opts?.initial ? 'recenti' : undefined))
+      if (effectiveSort) qs.append('sort_by', String(effectiveSort))
+      qs.append('per_page', '10')
+      qs.append('page', String(pageNum))
+
+      const endpoint = usePublicFilter ? API_ENDPOINTS.ARTICLES.FILTER : API_ENDPOINTS.ARTICLES.FILTER_PUBLIC
+      const res = await api.get<any>(`${endpoint}?${qs.toString()}`)
+
+      const d = res?.data
+      let list: Article[] = []
+      let lastPageNum = 1
+      if (Array.isArray(d)) {
+        list = d as Article[]
+      } else if (Array.isArray(d?.data)) {
+        list = d.data as Article[]
+        lastPageNum = d.last_page ?? d.meta?.last_page ?? 1
+      } else if (Array.isArray(d?.data?.data)) {
+        list = d.data.data as Article[]
+        lastPageNum = d.data.last_page ?? 1
+      }
+      setResults(Array.isArray(list) ? list : [])
+      setTotalPages(lastPageNum)
+      setPage(pageNum)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 500) {
+        toast.error('Qualcosa è andato storto. Riprova più tardi.')
+      }
+      setResults([])
+      setTotalPages(1)
+      setPage(1)
+    } finally {
+      setLoading(false)
+    }
+  }, [query, categoryId, sortBy, usePublicFilter])
 
   const runCategorySearch = useCallback(async () => {
     if (!open) return
@@ -175,12 +211,49 @@ export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleS
                     onClick={() => { onSelect(a); onClose() }}
                     className="w-full text-left p-4 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{a.title}</div>
-                        <div className="text-xs text-gray-500">ID: {a.id}{(() => { const d = formatDate(a.published_at); return d ? ` • Pubblicato: ${d}` : '' })()}</div>
+                        <div className="text-xs text-gray-500">
+                          ID: {a.id}{(() => { const d = formatDate(a.published_at); return d ? ` • Pubblicato: ${d}` : '' })()}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 truncate">
+                          Autore: {a.author?.name || '-'}{(() => { const c = Array.isArray(a.categories) ? a.categories[0] : undefined; return c ? ` • Categoria: ${c.title}` : '' })()} {typeof a.weekly_views === 'number' ? ` • Visite settimanali: ${a.weekly_views}` : ''}
+                        </div>
                       </div>
-                      <div className="shrink-0 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs font-medium px-2.5 py-0.5 rounded-full">Articolo</div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {a.status ? (
+                          <span
+                            title={ARTICLE_STATUS_LABEL[a.status]}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset ${(() => {
+                              const color = statusColorClass(a.status)
+                              // Map dot color to pill bg/text roughly
+                              if (color.includes('green')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ring-green-300/60 dark:ring-green-700/60'
+                              if (color.includes('gray') || color.includes('zinc') || color.includes('slate')) return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 ring-gray-300/60 dark:ring-gray-700/60'
+                              if (color.includes('amber')) return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ring-amber-300/60 dark:ring-amber-700/60'
+                              if (color.includes('red')) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 ring-red-300/60 dark:ring-red-700/60'
+                              if (color.includes('blue')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-blue-300/60 dark:ring-blue-700/60'
+                              return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 ring-gray-300/60 dark:ring-gray-700/60'
+                            })()}`}
+                          >
+                            <span className={`inline-block w-2 h-2 rounded-full ${statusColorClass(a.status)}`} />
+                            {ARTICLE_STATUS_LABEL[a.status]}
+                          </span>
+                        ) : null}
+                        {a.show_link ? (
+                          <a
+                            href={a.show_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Vedi articolo
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0 0L10 21l-7-7L14 3z" /></svg>
+                          </a>
+                        ) : null}
+                        <div className="shrink-0 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs font-medium px-2.5 py-0.5 rounded-full">Articolo</div>
+                      </div>
                     </div>
                   </button>
                 </li>
@@ -195,7 +268,7 @@ export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleS
                 type="button"
                 variant="secondary"
                 disabled={page <= 1}
-                onClick={() => doSearch(page - 1)}
+                onClick={() => void doSearch(page - 1)}
               >
                 Prec
               </Button>
@@ -203,7 +276,7 @@ export default function ArticleSelectModal({ open, onClose, onSelect }: ArticleS
                 type="button"
                 variant="secondary"
                 disabled={page >= totalPages}
-                onClick={() => doSearch(page + 1)}
+                onClick={() => void doSearch(page + 1)}
               >
                 Succ
               </Button>
