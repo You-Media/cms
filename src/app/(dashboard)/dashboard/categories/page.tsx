@@ -46,7 +46,7 @@ export default function CategoriesPage() {
   const lastParamsRef = useRef<string>('')
 
   const siteAllowed = selectedSite === 'editoria'
-  const rolesAllowed = hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])
+  const rolesAllowed = hasAnyRole(['ADMIN', 'Publisher', 'EditorInChief'])
   const canManageCategories = hasPermission('manage_categories')
   const canManageSubcategories = hasPermission('manage_subcategories')
 
@@ -111,11 +111,7 @@ export default function CategoriesPage() {
       // refresh
       void loadData()
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error('Non sei autorizzato a fare questa operazione')
-      } else {
-      toast.error('Eliminazione non riuscita')
-      }
+      // Errori gestiti globalmente
     }
   }
 
@@ -151,7 +147,7 @@ export default function CategoriesPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3}>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3} submitUseEmptyLabel>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">
@@ -547,11 +543,7 @@ export default function CategoriesPage() {
                     // refresh
                     void loadData()
                   } catch (e) {
-                    if (e instanceof ApiError && e.status === 403) {
-                      toast.error('Non sei autorizzato a fare questa operazione')
-                    } else {
-                      toast.error('Aggiornamento non riuscito')
-                    }
+                    // Errori gestiti globalmente
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -726,11 +718,7 @@ export default function CategoriesPage() {
                     setParentSearchResults([])
                     void loadData()
                   } catch (e) {
-                    if (e instanceof ApiError && e.status === 403) {
-                      toast.error('Non sei autorizzato a fare questa operazione')
-                    } else {
-                      toast.error('Creazione non riuscita')
-                    }
+                    // Errori gestiti globalmente
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

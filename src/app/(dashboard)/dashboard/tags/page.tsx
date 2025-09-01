@@ -53,7 +53,7 @@ export default function TagsPage() {
   }, [page, perPage])
 
   // Controllo accesso basato sui ruoli
-  if (!hasAnyRole(['ADMIN', 'Editor', 'EditorInChief'])) {
+  if (!hasAnyRole(['ADMIN', 'Publisher', 'EditorInChief'])) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">403 - Accesso negato</h1>
@@ -82,11 +82,7 @@ export default function TagsPage() {
       await deleteTag(tag.id)
       toast.success('Tag eliminato con successo')
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error('Non sei autorizzato a fare questa operazione')
-      } else {
-        toast.error('Eliminazione non riuscita')
-      }
+      // Errori gestiti globalmente
     }
   }
 
@@ -103,11 +99,7 @@ export default function TagsPage() {
       setIsCreateModalOpen(false)
       setFormData({ name: '', description: '' })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error('Non sei autorizzato a fare questa operazione')
-      } else {
-        toast.error('Creazione non riuscita')
-      }
+      // Errori gestiti globalmente
     }
   }
 
@@ -125,11 +117,7 @@ export default function TagsPage() {
       setEditingTag(null)
       setFormData({ name: '', description: '' })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        toast.error('Non sei autorizzato a fare questa operazione')
-      } else {
-        toast.error('Aggiornamento non riuscito')
-      }
+      // Errori gestiti globalmente
     }
   }
 
@@ -151,7 +139,7 @@ export default function TagsPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2}>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={2} submitUseEmptyLabel>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">
@@ -355,21 +343,7 @@ export default function TagsPage() {
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  <Label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrizione (opzionale)</Label>
-                  <div className="relative">
-                    <Input 
-                      id="description" 
-                      value={formData.description} 
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
-                      placeholder="Inserisci una descrizione del tag"
-                      className="pl-10"
-                    />
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                </div>
+                {/* Descrizione rimossa dalla creazione del tag */}
               </div>
             </form>
             
@@ -441,22 +415,7 @@ export default function TagsPage() {
                     </svg>
                   </div>
                 </div>
-                
-                <div className="space-y-3">
-                  <Label htmlFor="edit-description" className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrizione (opzionale)</Label>
-                  <div className="relative">
-                    <Input 
-                      id="edit-description" 
-                      value={formData.description} 
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
-                      placeholder="Inserisci una descrizione del tag"
-                      className="pl-10"
-                    />
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                </div>
+                {/* Descrizione rimossa dalla modifica del tag */}
               </div>
             </form>
             

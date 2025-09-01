@@ -736,11 +736,11 @@ export default function EditArticlePageImpl() {
 
     setSubmitting(true)
     try {
-      await api.post(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any, undefined, { suppressGlobalToasts: true })
+      await api.post(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
       toast.success('Articolo aggiornato con successo')
       // Rimani sulla stessa pagina: ricarica i dettagli per aggiornare lo snapshot
       try {
-        const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(String(id)), undefined, { suppressGlobalToasts: true })
+        const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(String(id)))
         const d = (res as any)?.data || res
         const article = d?.data || d
         const titleV = article?.title ?? ''
@@ -836,13 +836,7 @@ export default function EditArticlePageImpl() {
         try { articleDetailCache.set(String(id), article) } catch {}
       } catch {}
     } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 403) toast.error('Non sei autorizzato a modificare articoli')
-        else if (error.status === 422) toast.error(error.message || 'Dati non validi')
-        else toast.error('Aggiornamento non riuscito')
-      } else {
-        toast.error('Aggiornamento non riuscito')
-      }
+      // Errori gestiti globalmente
     } finally {
       setSubmitting(false)
     }
@@ -1193,15 +1187,11 @@ export default function EditArticlePageImpl() {
                       const ok = window.confirm(`Confermi l'eliminazione dell'articolo #${id}?`)
                       if (!ok) return
                       try {
-                        await api.delete(API_ENDPOINTS.ARTICLES.DELETE(String(id)), undefined, { suppressGlobalToasts: true })
+                        await api.delete(API_ENDPOINTS.ARTICLES.DELETE(String(id)))
                         toast.success('Articolo eliminato')
                         router.push(APP_ROUTES.DASHBOARD.ARTICLES.LIST)
                       } catch (error) {
-                        if (error instanceof ApiError && error.status === 403) {
-                          toast.error('Non sei autorizzato a fare questa operazione')
-                        } else {
-                          toast.error('Eliminazione non riuscita')
-                        }
+                        // Errori gestiti globalmente
                       }
                     }}
                   >

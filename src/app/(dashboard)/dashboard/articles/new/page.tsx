@@ -237,17 +237,11 @@ export default function NewArticlePage() {
 
     setSubmitting(true)
     try {
-      await api.post(API_ENDPOINTS.ARTICLES.CREATE, formData as any, undefined, { suppressGlobalToasts: true })
+      await api.post(API_ENDPOINTS.ARTICLES.CREATE, formData as any)
       toast.success('Articolo creato con successo')
       router.push(APP_ROUTES.DASHBOARD.ARTICLES.LIST)
     } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 403) toast.error('Non sei autorizzato a creare articoli')
-        else if (error.status === 422) toast.error(error.message || 'Dati non validi')
-        else toast.error('Creazione non riuscita')
-      } else {
-        toast.error('Creazione non riuscita')
-      }
+      // Errori gestiti globalmente
     } finally {
       setSubmitting(false)
     }

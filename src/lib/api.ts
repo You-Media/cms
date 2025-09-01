@@ -71,18 +71,17 @@ class ApiClient {
 
         let errorData: any = {};
         let serverMessage = '';
+        let detailedValidationMessage = '';
         
         try {
           errorData = await response.json();
-          // Costruisci un messaggio leggibile per 422 usando gli errori campo->messaggi
+          // Costruisci un messaggio leggibile per 422: SOLO i messaggi dal backend (senza prefisso campo)
           if (response.status === 422 && errorData && typeof errorData === 'object' && errorData.errors) {
             try {
               const allMsgs = Object.values(errorData.errors as Record<string, string[] | string>)
                 .flat()
                 .filter(Boolean) as string[]
-              if (allMsgs.length > 0) {
-                serverMessage = allMsgs.join('\n')
-              }
+              if (allMsgs.length > 0) detailedValidationMessage = allMsgs.join('\n')
             } catch {}
           }
           if (!serverMessage) {
@@ -92,10 +91,11 @@ class ApiClient {
           console.warn('Failed to parse error response:', parseError);
         }
         
-        // Toast globale per 422 - Richiesta non valida (mostralo solo se non soppressi e senza messaggio custom a livello chiamante)
+        // Toast globale per 422 - Titolo + descrizione con errori dal backend
         if (response.status === 422 && !options?.suppressGlobalToasts) {
           try {
-            toast.error('Richiesta non valida')
+            const description = detailedValidationMessage || serverMessage || 'Controlla i dati inseriti.'
+            toast.error('Richiesta non valida', { description })
           } catch {}
         }
         // Toast globale per 403 - Permessi insufficienti
