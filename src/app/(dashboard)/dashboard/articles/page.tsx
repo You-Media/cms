@@ -32,20 +32,11 @@ export default function ArticlesPage() {
   const allowedRoles = ['JOURNALIST', 'EDITOR_IN_CHIEF', 'PUBLISHER']
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles)
 
-  if (!canView) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold">403 - Accesso negato</h1>
-        <p className="text-sm text-gray-500 mt-2">Non hai i permessi necessari per accedere a questa risorsa.</p>
-      </div>
-    )
-  }
-
   const { results, loading, page, totalPages, total, setPage, search } = useArticles()
   const { searchRegions, searchProvinces } = useItalyGeo()
 
   const showAuthorFilter = hasAnyRole(['PUBLISHER', 'EDITOR_IN_CHIEF'])
-  const isJournalist = hasAnyRole(['JOURNALIST'])
+  const showPriorityColumn = hasAnyRole(['PUBLISHER'])
 
   const [query, setQuery] = useState('')
   const [categoryId, setCategoryId] = useState<number | ''>('')
@@ -80,6 +71,18 @@ export default function ArticlesPage() {
     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
+
+  const canGoPrev = useMemo(() => page > 1, [page])
+  const canGoNext = useMemo(() => page < totalPages, [page, totalPages])
+
+  if (!canView) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">403 - Accesso negato</h1>
+        <p className="text-sm text-gray-500 mt-2">Non hai i permessi necessari per accedere a questa risorsa.</p>
+      </div>
+    )
+  }
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,9 +133,6 @@ export default function ArticlesPage() {
     return pretty.join(' / ')
   }
 
-  const canGoPrev = useMemo(() => page > 1, [page])
-  const canGoNext = useMemo(() => page < totalPages, [page, totalPages])
-
   async function handleDelete(article: Article) {
     if (!canDelete) return
     const ok = window.confirm(`Confermi l'eliminazione dell'articolo #${article.id}?`)
@@ -149,13 +149,6 @@ export default function ArticlesPage() {
         toast.error('Eliminazione non riuscita')
       }
     }
-  }
-
-  const formatDate = (iso?: string) => {
-    if (!iso) return '-'
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return '-'
-    return d.toLocaleDateString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
 
   const columns: Array<DataTableColumn<Article>> = [
@@ -208,6 +201,15 @@ export default function ArticlesPage() {
       thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-32',
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
+    ...(showPriorityColumn ? [{
+      key: 'priority',
+      header: 'Priorità',
+      cell: (a: Article) => (
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{typeof a.priority === 'number' ? a.priority : '-'}</span>
+      ),
+      thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-24',
+      tdClassName: 'px-6 py-4 whitespace-nowrap text-center',
+    }] : []),
     {
       key: 'categories',
       header: 'Categoria',

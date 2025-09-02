@@ -216,8 +216,26 @@ export async function updateUser(userId: number | string, payload: UpdateUserPay
   if (payload.roles) payload.roles.forEach((r) => form.append('roles[]', r))
   if (payload.profile_photo) form.append('profile_photo', payload.profile_photo)
   if (payload.remove_profile_photo) form.append('remove_profile_photo', '1')
-  // PATCH multipart
-  return api.post<{ status: string; message: string }>(API_ENDPOINTS.USERS.DETAIL(userId), form, undefined, { suppressGlobalToasts: false })
+  
+  const result = await api.post<{ status: string; message: string }>(API_ENDPOINTS.USERS.DETAIL(userId), form, undefined, { suppressGlobalToasts: false })
+  
+  // Invalidate cache after successful update
+  if (result && 'status' in result && result.status === 'success') {
+    invalidateUserDetailCache(userId)
+  }
+  
+  return result
+}
+
+export function invalidateUserDetailCache(userId?: number | string): void {
+  if ('__userDetailCache' in globalThis) {
+    const cache: Map<string, any> = (globalThis as any).__userDetailCache
+    if (userId) {
+      cache.delete(String(userId))
+    } else {
+      cache.clear()
+    }
+  }
 }
 
 

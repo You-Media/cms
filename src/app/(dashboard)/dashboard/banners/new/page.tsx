@@ -63,6 +63,7 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
   const [pendingImageURL, setPendingImageURL] = useState<string | null>(null)
   const [pendingOriginalName, setPendingOriginalName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const imageDropRef = useRef<HTMLButtonElement | null>(null)
 
   // Precompila in edit (se arriviamo con un banner nel draft store)
   useEffect(() => {
@@ -453,6 +454,7 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
               )}
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isImageLocked ? 'opacity-50 pointer-events-none select-none filter blur-[1px]' : ''}`}>
                 <button
+                  ref={imageDropRef}
                   type="button"
                   aria-disabled={isImageLocked}
                   title={imagePreview ? 'Ingrandisci anteprima' : ''}
@@ -462,6 +464,64 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                     const w = window.open('', '_blank')
                     if (w) {
                       w.document.write(`<img src=\\"${imagePreview}\\" style=\\"max-width:100%;height:auto;\\" />`)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('image/')) {
+                        // Handle the file directly here
+                        if (!file) { setImageFile(null); setImagePreview(null); return }
+                        if (!model || !position) {
+                          toast.error('Seleziona prima modello e posizione')
+                          return
+                        }
+                        const req = getRequiredImageFor(model, position as BannerPosition)
+                        if (req) {
+                          const isValid = new Promise<boolean>((resolve) => {
+                            const img = new Image()
+                            const url = URL.createObjectURL(file)
+                            img.onload = () => {
+                              const tolerance = 2
+                              const widthOk = Math.abs(img.width - req.width) <= tolerance
+                              const heightOk = Math.abs(img.height - req.height) <= tolerance
+                              resolve(widthOk && heightOk)
+                              URL.revokeObjectURL(url)
+                            }
+                            img.onerror = () => { resolve(false); URL.revokeObjectURL(url) }
+                            img.src = url
+                          })
+                          isValid.then((valid) => {
+                            if (!valid) {
+                              // open cropper and let user fix it
+                              const url = URL.createObjectURL(file)
+                              setPendingImageURL(url)
+                              setPendingOriginalName(file.name || null)
+                              setOpenCropper(true)
+                              // reset input to allow re-selecting the same file after cancel
+                              if (fileInputRef.current) fileInputRef.current.value = ''
+                              return
+                            }
+                            setImageFile(file)
+                            const previewUrl = URL.createObjectURL(file)
+                            setImagePreview(previewUrl)
+                          })
+                        } else {
+                          setImageFile(file)
+                          const previewUrl = URL.createObjectURL(file)
+                          setImagePreview(previewUrl)
+                        }
+                      } else {
+                        toast.error('Seleziona solo file immagine')
+                      }
                     }
                   }}
                 >
@@ -485,29 +545,29 @@ export default function NewBannerPage({ initialBanner, isEdit: isEditProp }: New
                       }
                       const req = getRequiredImageFor(model, position as BannerPosition)
                       if (req) {
-                      const isValid = await new Promise<boolean>((resolve) => {
+                        const isValid = await new Promise<boolean>((resolve) => {
                           const img = new Image()
                           const url = URL.createObjectURL(file)
-                        img.onload = () => {
-                          const tolerance = 2
-                          const widthOk = Math.abs(img.width - req.width) <= tolerance
-                          const heightOk = Math.abs(img.height - req.height) <= tolerance
-                          resolve(widthOk && heightOk)
-                          URL.revokeObjectURL(url)
-                        }
+                          img.onload = () => {
+                            const tolerance = 2
+                            const widthOk = Math.abs(img.width - req.width) <= tolerance
+                            const heightOk = Math.abs(img.height - req.height) <= tolerance
+                            resolve(widthOk && heightOk)
+                            URL.revokeObjectURL(url)
+                          }
                           img.onerror = () => { resolve(false); URL.revokeObjectURL(url) }
                           img.src = url
                         })
-                      if (!isValid) {
-                        // open cropper and let user fix it
-                        const url = URL.createObjectURL(file)
-                        setPendingImageURL(url)
-                        setPendingOriginalName(file.name || null)
-                        setOpenCropper(true)
-                        // reset input to allow re-selecting the same file after cancel
-                        if (fileInputRef.current) fileInputRef.current.value = ''
-                        return
-                      }
+                        if (!isValid) {
+                          // open cropper and let user fix it
+                          const url = URL.createObjectURL(file)
+                          setPendingImageURL(url)
+                          setPendingOriginalName(file.name || null)
+                          setOpenCropper(true)
+                          // reset input to allow re-selecting the same file after cancel
+                          if (fileInputRef.current) fileInputRef.current.value = ''
+                          return
+                        }
                       }
                       setImageFile(file)
                       const previewUrl = URL.createObjectURL(file)

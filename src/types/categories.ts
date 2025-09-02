@@ -3,6 +3,7 @@ export interface Category {
   title: string
   slug: string
   parent_id: number | null
+  order?: number
   created_at: string
   updated_at: string
   // Facoltativo, non sempre presente in risposta
@@ -12,6 +13,7 @@ export interface Category {
     title: string
     slug: string
     parent_id: number | null
+    order?: number
     created_at: string
     updated_at: string
   } | null
@@ -22,6 +24,8 @@ export interface CategoriesSearchParams {
   per_page?: number | null
   parent_id?: number | null
   search?: string | null
+  sort_by?: string | null
+  sort_direction?: 'asc' | 'desc' | null
 }
 
 export interface CategoriesSearchResponse {
@@ -40,12 +44,14 @@ export interface CreateCategoryPayload {
   title: string
   slug?: string | null // il backend lo accetta, ma UI non deve consentire modifica
   parent_id?: number | null
+  order?: number
 }
 
 export interface UpdateCategoryPayload {
   title?: string
   slug?: string | null
   parent_id?: number | null
+  order?: number
 }
 
 export interface CategoryTreeNode {

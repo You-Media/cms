@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 type FiltersCardProps = {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
   isLoading?: boolean
-  gridCols?: 2 | 3
+  gridCols?: 2 | 3 | 4 | 5
   submitLabel?: string
   submitFullWidth?: boolean
   submitUseEmptyLabel?: boolean
@@ -24,7 +24,7 @@ export function FiltersCard({
   children,
   title = 'Filtri di ricerca',
 }: FiltersCardProps) {
-  const mdColsClass = gridCols === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'
+  const mdColsClass = gridCols === 3 ? 'md:grid-cols-3' : gridCols === 4 ? 'md:grid-cols-4' : gridCols === 5 ? 'md:grid-cols-5' : 'md:grid-cols-2'
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">

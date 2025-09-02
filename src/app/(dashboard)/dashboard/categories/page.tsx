@@ -7,19 +7,21 @@ import type { Category } from '@/types/categories'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { FiltersCard } from '@/components/table/FiltersCard'
 import { ResultsHeader } from '@/components/table/ResultsHeader'
 import { PaginationBar } from '@/components/table/PaginationBar'
 import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
 import { toast } from 'sonner'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
-import { ApiError } from '@/lib/api'
 
 export default function CategoriesPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
 
   const [search, setSearch] = useState('')
   const [parentId, setParentId] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'title' | 'order'>('title')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [perPage, setPerPage] = useState<number>(15)
   const [page, setPage] = useState<number>(1)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -35,11 +37,13 @@ export default function CategoriesPage() {
   const [editParentSearch, setEditParentSearch] = useState<string>('')
   const [editParentSearchResults, setEditParentSearchResults] = useState<Category[]>([])
   const [isSearchingParentEdit, setIsSearchingParentEdit] = useState<boolean>(false)
+  const [editOrder, setEditOrder] = useState<number | ''>('')
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
 
   // Form state (create)
   const [newTitle, setNewTitle] = useState<string>('')
   const [newParentId, setNewParentId] = useState<string>('')
+  const [newOrder, setNewOrder] = useState<number | ''>('')
   const [parentSearch, setParentSearch] = useState<string>('')
   const [parentSearchResults, setParentSearchResults] = useState<Category[]>([])
   const [isSearchingParent, setIsSearchingParent] = useState<boolean>(false)
@@ -49,18 +53,19 @@ export default function CategoriesPage() {
   const rolesAllowed = hasAnyRole(['ADMIN', 'Publisher', 'EditorInChief'])
   const canManageCategories = hasPermission('manage_categories')
   const canManageSubcategories = hasPermission('manage_subcategories')
+  const showOrderColumn = hasAnyRole(['PUBLISHER'])
 
   const canGoPrev = useMemo(() => page > 1, [page])
   const canGoNext = useMemo(() => page < lastPage, [page, lastPage])
 
   useEffect(() => {
     if (!siteAllowed) return
-    const key = `${page}|${perPage}|${search}|${parentId}`
+    const key = `${page}|${perPage}|${search}|${parentId}|${sortBy}|${sortDirection}`
     if (lastParamsRef.current === key) return
     lastParamsRef.current = key
     void loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, perPage])
+  }, [page, perPage, sortBy, sortDirection])
 
   async function loadData() {
     setIsLoading(true)
@@ -70,12 +75,14 @@ export default function CategoriesPage() {
         per_page: perPage,
         search: search || null,
         parent_id: parentId ? Number(parentId) : null,
+        sort_by: sortBy,
+        sort_direction: sortDirection,
       })
       setCategories(res.data.data)
       setCurrentPage(res.data.current_page)
       setLastPage(res.data.last_page)
       setTotal(res.data.total)
-    } catch (error) {
+    } catch {
       toast.error('Errore durante il caricamento delle categorie')
     } finally {
       setIsLoading(false)
@@ -93,6 +100,7 @@ export default function CategoriesPage() {
     setEditTitle(category.title)
     setEditParentId(category.parent_id ? String(category.parent_id) : '')
     setEditParentSearch(category.parent?.title || '')
+    setEditOrder(category.order || '')
     setIsEditOpen(true)
   }
 
@@ -110,7 +118,7 @@ export default function CategoriesPage() {
       toast.success('Categoria eliminata con successo')
       // refresh
       void loadData()
-    } catch (error) {
+    } catch {
       // Errori gestiti globalmente
     }
   }
@@ -147,7 +155,7 @@ export default function CategoriesPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3} submitUseEmptyLabel>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={5} submitUseEmptyLabel>
         <div className="space-y-2">
           <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
           <div className="relative">
@@ -177,6 +185,30 @@ export default function CategoriesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
             </svg>
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sort_by" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ordina per</Label>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona criterio" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="title">Titolo</SelectItem>
+              {showOrderColumn && <SelectItem value="order">Ordine</SelectItem>}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sort_direction" className="text-sm font-medium text-gray-700 dark:text-gray-300">Direzione</Label>
+          <Select value={sortDirection} onValueChange={(v) => setSortDirection(v as 'asc' | 'desc')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona direzione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asc">Crescente</SelectItem>
+              <SelectItem value="desc">Decrescente</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </FiltersCard>
 
@@ -288,6 +320,20 @@ export default function CategoriesPage() {
                 )
               ),
             },
+            ...(showOrderColumn ? [{
+              key: 'order',
+              header: (
+                <div className="flex items-center space-x-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                  <span>Ordine</span>
+                </div>
+              ),
+              cell: (cat: Category) => (
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{typeof cat.order === 'number' ? cat.order : '-'}</span>
+              ),
+            }] : []),
             {
               key: 'articles',
               header: (
@@ -488,7 +534,7 @@ export default function CategoriesPage() {
                           onClick={() => {
                             setEditParentId(String(c.id))
                             setEditParentSearchResults([])
-                            toast.success(`Categoria genitore selezionata: ${c.title}`)
+                            toast.success('Categoria genitore selezionata: ' + c.title)
                           }}
                         >
                           <div className="flex items-center justify-between">
@@ -512,6 +558,27 @@ export default function CategoriesPage() {
                     </div>
                   )}
                 </div>
+                {showOrderColumn && (
+                  <div className="space-y-3">
+                    <Label htmlFor="edit_order" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ordine</Label>
+                    <div className="relative">
+                      <Input 
+                        id="edit_order" 
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={editOrder} 
+                        onChange={(e) => setEditOrder(e.target.value === '' ? '' : Number(e.target.value))} 
+                        placeholder="1-10"
+                        className="pl-10"
+                      />
+                      <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                    </div>
+                    <p className="text-xs text-gray-500">Ordine per l'ordinamento (1-10)</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -531,18 +598,20 @@ export default function CategoriesPage() {
                     return
                   }
                   try {
-                    const payload: any = {}
+                    const payload: { title?: string; parent_id?: number | null; order?: number } = {}
                     if (editTitle.trim() && editTitle.trim() !== editCategory.title) payload.title = editTitle.trim()
                     // parent_id: consenti null/numero; invia solo se differente
                     const newPid = editParentId ? Number(editParentId) : null
                     const oldPid = editCategory.parent_id ?? null
                     if (newPid !== oldPid) payload.parent_id = newPid
+                    // order: invia solo se differente
+                    if (editOrder !== '' && editOrder !== editCategory.order) payload.order = editOrder
                     await updateCategory(editCategory.id, payload)
                     toast.success('Categoria aggiornata')
                     setIsEditOpen(false)
                     // refresh
                     void loadData()
-                  } catch (e) {
+                  } catch {
                     // Errori gestiti globalmente
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
@@ -668,7 +737,7 @@ export default function CategoriesPage() {
                           onClick={() => {
                             setNewParentId(String(c.id))
                             setParentSearchResults([])
-                            toast.success(`Categoria genitore selezionata: ${c.title}`)
+                            toast.success('Categoria genitore selezionata: ' + c.title)
                           }}
                         >
                           <div className="flex items-center justify-between">
@@ -692,6 +761,27 @@ export default function CategoriesPage() {
                     </div>
                   )}
                 </div>
+                {showOrderColumn && (
+                  <div className="space-y-3">
+                    <Label htmlFor="new_order" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ordine</Label>
+                    <div className="relative">
+                      <Input 
+                        id="new_order" 
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={newOrder} 
+                        onChange={(e) => setNewOrder(e.target.value === '' ? '' : Number(e.target.value))} 
+                        placeholder="1-10"
+                        className="pl-10"
+                      />
+                      <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                    </div>
+                    <p className="text-xs text-gray-500">Ordine per l'ordinamento (1-10)</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -709,15 +799,20 @@ export default function CategoriesPage() {
                     return
                   }
                   try {
-                    await createCategory({ title: newTitle.trim(), parent_id: newParentId ? Number(newParentId) : null })
+                    await createCategory({ 
+                      title: newTitle.trim(), 
+                      parent_id: newParentId ? Number(newParentId) : null,
+                      order: newOrder !== '' ? newOrder : undefined
+                    })
                     toast.success('Categoria creata con successo')
                     setIsCreateOpen(false)
                     setNewTitle('')
                     setNewParentId('')
+                    setNewOrder('')
                     setParentSearch('')
                     setParentSearchResults([])
                     void loadData()
-                  } catch (e) {
+                  } catch {
                     // Errori gestiti globalmente
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">

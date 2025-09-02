@@ -82,6 +82,7 @@ export default function EditArticlePageImpl() {
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles)
   const canEdit = hasPermission('edit_content')
   const canDelete = hasPermission('delete_content')
+  const showPriorityField = hasAnyRole(['PUBLISHER'])
 
   // Form state
   const [title, setTitle] = useState('')
@@ -127,12 +128,14 @@ export default function EditArticlePageImpl() {
   const [pendingOriginalName, setPendingOriginalName] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
   const coverInputRef = useRef<HTMLInputElement | null>(null)
+  const coverDropRef = useRef<HTMLDivElement | null>(null)
 
   // Gallery (existing + new)
   const [existingGallery, setExistingGallery] = useState<ExistingGalleryItem[]>([])
   const [galleryToRemove, setGalleryToRemove] = useState<number[]>([])
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([])
+  const galleryDropRef = useRef<HTMLDivElement | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -592,6 +595,66 @@ export default function EditArticlePageImpl() {
     setGalleryPreviews((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  // Drag and drop handlers for cover
+  const handleCoverDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleCoverDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
+      if (file.type.startsWith('image/')) {
+        onCoverSelected(file)
+      } else {
+        toast.error('Seleziona solo file immagine')
+      }
+    }
+  }
+
+  // Drag and drop handlers for gallery
+  const handleGalleryDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleGalleryDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const imageFiles: File[] = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file)
+        }
+      }
+      
+      if (imageFiles.length > 0) {
+        // Convert File[] to FileList-like object
+        const fileList = {
+          length: imageFiles.length,
+          item: (index: number) => imageFiles[index],
+          [Symbol.iterator]: function* () {
+            for (let i = 0; i < imageFiles.length; i++) {
+              yield imageFiles[i]
+            }
+          }
+        } as FileList
+        
+        onGallerySelected(fileList)
+      } else {
+        toast.error('Seleziona solo file immagine')
+      }
+    }
+  }
+
   function validate(): boolean {
     const contentText = content.replace(/<[^>]*>/g, '').replace(/&nbsp;|\s+/g, '')
     if (!title.trim() || contentText.length === 0) {
@@ -937,7 +1000,12 @@ export default function EditArticlePageImpl() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cover</Label>
-                  <div className="h-40 w-full flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+                  <div 
+                    ref={coverDropRef}
+                    className="h-40 w-full flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+                    onDragOver={handleCoverDragOver}
+                    onDrop={handleCoverDrop}
+                  >
                     {coverPreview ? (
                       <img src={coverPreview} alt="cover" className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -989,6 +1057,14 @@ export default function EditArticlePageImpl() {
                         <div className="absolute inset-x-0 bottom-0 bg-black/40 text-white text-[10px] p-1 truncate">Anteprima</div>
                       </div>
                     ))}
+                  </div>
+                  <div 
+                    ref={galleryDropRef}
+                    className="min-h-[100px] w-full flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    onDragOver={handleGalleryDragOver}
+                    onDrop={handleGalleryDrop}
+                  >
+                    <div className="text-xs text-gray-500">Trascina qui le immagini o usa il selettore sotto</div>
                   </div>
                   <input
                     type="file"
@@ -1174,6 +1250,20 @@ export default function EditArticlePageImpl() {
                   <Label>Data pubblicazione</Label>
                   <Input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
                 </div>
+                {showPriorityField && (
+                  <div className="space-y-2">
+                    <Label>Priorità</Label>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      max="10" 
+                      value={priority} 
+                      onChange={(e) => setPriority(e.target.value === '' ? '' : Number(e.target.value))} 
+                      placeholder="0-10"
+                    />
+                    <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-10)</p>
+                  </div>
+                )}
               </div>
             </div>
 

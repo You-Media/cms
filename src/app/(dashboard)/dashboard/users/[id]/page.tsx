@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
 import ImageCropperModal from '@/components/forms/image-cropper-modal'
 import { toast } from 'sonner'
-import { fetchUserDetail, updateUser } from '@/hooks/use-users'
+import { fetchUserDetail, updateUser, invalidateUserDetailCache } from '@/hooks/use-users'
 
 type EditUserPageProps = { params: { id: string } }
 
@@ -169,6 +169,35 @@ export default function EditUserPage({ params }: EditUserPageProps) {
             if (!photo && removePhoto) payload.remove_profile_photo = true
             await updateUser(userId, payload)
             toast.success('Utente aggiornato')
+            
+            // Invalidate cache and reset hasLoadedRef to force fresh data on next visit
+            invalidateUserDetailCache(userId)
+            hasLoadedRef.current = false
+            
+            // Reload data immediately to show updated information
+            try {
+              const res = await fetchUserDetail(userId)
+              const data = (res as any).data || res
+              if (data) {
+                const fn = data?.profile?.first_name || ''
+                const ln = data?.profile?.last_name || ''
+                const em = data?.email || ''
+                const rs = Array.isArray(data?.roles) ? data.roles : []
+                setFirstName(fn)
+                setLastName(ln)
+                setEmail(em)
+                setRoles(rs)
+                setOrigFirstName(fn)
+                setOrigLastName(ln)
+                setOrigEmail(em)
+                setOrigRoles(rs)
+                const avatar = data?.profile?.profile_photo || ''
+                if (avatar) setPhotoPreview(avatar)
+                hasLoadedRef.current = true
+              }
+            } catch (error) {
+              console.error('Failed to reload user data:', error)
+            }
           } catch (e) {
             if (e instanceof ApiError && e.status === 422 && (e as any).errors) {
               setFieldErrors((e as any).errors as Record<string, string[]>)
