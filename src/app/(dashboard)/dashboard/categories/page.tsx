@@ -91,7 +91,10 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
     const idStr = slotInputs[slotIndex]
     const idNum = Number(idStr)
     if (!idNum || Number.isNaN(idNum)) return
-    if (ordered.some((c) => c.id === idNum)) return
+    if (ordered.some((c) => c.id === idNum)) {
+      toast.error('Questa categoria è già presente nella lista')
+      return
+    }
     const desiredOrder = slotIndex + 1
     try {
       await updateCategory(idNum, { order: desiredOrder })
@@ -125,18 +128,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
     } catch {}
   }
 
-  function onDrag(startIndex: number, endIndex: number) {
-    // Allow only contiguous move
-    if (Math.abs(startIndex - endIndex) !== 1) return
-    setSlots((prev) => {
-      const arr = [...prev]
-      const temp = arr[startIndex]
-      arr[startIndex] = arr[endIndex]
-      arr[endIndex] = temp
-      return arr
-    })
-    setOrderDirty(true)
-  }
+  // Drag & drop: consenti spostamento solo verso slot vuoti, senza shift degli altri
 
   const [orderDirty, setOrderDirty] = useState(false)
 
@@ -194,7 +186,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
         <h3 className="text-base font-semibold">Categorie in home (ordinate)</h3>
         {orderDirty && (
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={onSaveOrder} disabled={loading}>Salva ordine</Button>
+            <Button type="button" onClick={onSaveOrder} disabled={loading} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">Salva ordine</Button>
           </div>
         )}
       </div>
@@ -208,8 +200,19 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
               className={`rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900 text-sm ${draggingIndex===idx ? 'ring-2 ring-amber-500' : ''}`}
               draggable
               onDragStart={() => c && setDraggingIndex(idx)}
-              onDragOver={(e) => { e.preventDefault(); if (draggingIndex!==null && draggingIndex!==idx) onDrag(draggingIndex, idx); if (c || draggingIndex!==null) setDraggingIndex(idx) }}
-              onDrop={() => setDraggingIndex(null)}
+              onDragOver={(e) => { e.preventDefault() }}
+              onDrop={() => {
+                if (draggingIndex!==null && draggingIndex!==idx && !slots[idx]) {
+                  setSlots((prev) => {
+                    const arr = [...prev]
+                    arr[idx] = prev[draggingIndex]
+                    arr[draggingIndex] = null
+                    return arr
+                  })
+                  setOrderDirty(true)
+                }
+                setDraggingIndex(null)
+              }}
               onDragEnd={() => setDraggingIndex(null)}
             >
               {c ? (

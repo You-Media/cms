@@ -842,7 +842,10 @@ function UltimissimiArticlesManager() {
     const idStr = slotInputs[slotIndex]
     const idNum = Number(idStr)
     if (!idNum || Number.isNaN(idNum)) return
-    if (ordered.some((a) => a.id === idNum)) return
+    if (ordered.some((a) => a.id === idNum)) {
+      toast.error('Questo articolo è già presente nella lista')
+      return
+    }
     const desiredOrder = slotIndex + 1
     try {
       await updateArticle(idNum, { recent_order: desiredOrder })
@@ -876,17 +879,7 @@ function UltimissimiArticlesManager() {
     } catch {}
   }
 
-  function onDrag(startIndex: number, endIndex: number) {
-    if (Math.abs(startIndex - endIndex) !== 1) return
-    setSlots((prev) => {
-      const arr = [...prev]
-      const temp = arr[startIndex]
-      arr[startIndex] = arr[endIndex]
-      arr[endIndex] = temp
-      return arr
-    })
-    setOrderDirty(true)
-  }
+  // Drag & drop: consenti spostamento solo verso slot vuoti, senza shift degli altri
 
   async function onSaveOrder() {
     const prev = ordered
@@ -941,7 +934,7 @@ function UltimissimiArticlesManager() {
         <h3 className="text-base font-semibold">Articoli “Ultimissimi” (ordinati)</h3>
         {orderDirty && (
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={onSaveOrder} disabled={loading}>Salva ordine</Button>
+            <Button type="button" onClick={onSaveOrder} disabled={loading} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">Salva ordine</Button>
           </div>
         )}
       </div>
@@ -955,8 +948,19 @@ function UltimissimiArticlesManager() {
               className={`rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900 text-sm ${draggingIndex===idx ? 'ring-2 ring-amber-500' : ''}`}
               draggable
               onDragStart={() => a && setDraggingIndex(idx)}
-              onDragOver={(e) => { e.preventDefault(); if (draggingIndex!==null && draggingIndex!==idx) onDrag(draggingIndex, idx); if (a || draggingIndex!==null) setDraggingIndex(idx) }}
-              onDrop={() => setDraggingIndex(null)}
+              onDragOver={(e) => { e.preventDefault() }}
+              onDrop={() => {
+                if (draggingIndex!==null && draggingIndex!==idx && !slots[idx]) {
+                  setSlots((prev) => {
+                    const arr = [...prev]
+                    arr[idx] = prev[draggingIndex]
+                    arr[draggingIndex] = null
+                    return arr
+                  })
+                  setOrderDirty(true)
+                }
+                setDraggingIndex(null)
+              }}
               onDragEnd={() => setDraggingIndex(null)}
             >
               {a ? (
