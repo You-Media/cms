@@ -19,6 +19,7 @@ import { API_ENDPOINTS } from '@/config/endpoints'
 import CategorySelectModal from '@/components/forms/category-select-modal'
 import AuthorSelectModal from '@/components/forms/author-select-modal'
 import type { Article } from '@/hooks/use-articles'
+import { fetchUltimissimiArticles, updateArticle } from '@/hooks/use-articles'
 import { ARTICLE_STATUS_LABEL, statusColorClass } from '@/types/articles'
 import type { ArticleStatus } from '@/types/articles'
 import { useArticles } from '@/hooks/use-articles'
@@ -86,7 +87,11 @@ export default function ArticlesPage() {
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setPage(1)
+    // Evita doppie chiamate: se non siamo a pagina 1, imposta pagina e lascia che l'useEffect faccia la fetch
+    if (page !== 1) {
+      setPage(1)
+      return
+    }
     void search({
       page: 1,
       per_page: perPage,
@@ -104,19 +109,8 @@ export default function ArticlesPage() {
   function applyCategoryFilter(catId: number, catTitle: string) {
     setSelectedCategoryTitle(catTitle)
     setCategoryId(catId)
+    // Non avviare la ricerca automaticamente: eseguila solo con "Cerca"
     setPage(1)
-    void search({
-      page: 1,
-      per_page: perPage,
-      search: query || undefined,
-      category_id: catId,
-      region_name: regionName || undefined,
-      province_name: provinceName || undefined,
-      status: (status || undefined) as ArticleStatus | undefined,
-      author_id: authorId || undefined,
-      sort_by: sortBy,
-      sort_direction: sortDirection,
-    })
   }
 
   function formatCategoryPathFromSlug(slug: string | undefined, title: string): string {
@@ -537,140 +531,142 @@ export default function ArticlesPage() {
       />
 
       <FiltersCard onSubmit={onSearchSubmit} isLoading={loading} gridCols={3} submitLabel="Cerca" submitFullWidth={true} submitUseEmptyLabel={true}>
-        <div className="space-y-2 md:col-span-3">
-          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca</Label>
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Titolo o testo" />
-        </div>
-        {/* Riga 1: Regione e Provincia (2 colonne) */}
-        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Riga 1: Tutti i filtri */}
+        <div className="md:col-span-3 space-y-6">
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Regione</Label>
-            <div className="relative">
-              <Input
-                value={regionName}
-                onChange={(e) => { setRegionName(e.target.value); setProvinceName('') }}
-                onFocus={() => setShowRegionDropdown(true)}
-                onBlur={() => setTimeout(() => setShowRegionDropdown(false), 100)}
-                placeholder="Es. Lazio"
-              />
-              {showRegionDropdown && regionName && searchRegions(regionName).slice(0, 6).length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
-                  {searchRegions(regionName).slice(0, 6).map((r) => (
-                    <button
-                      key={r.name}
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                      onClick={() => { setRegionName(r.name); setProvinceName(''); setShowRegionDropdown(false) }}
-                    >
-                      {r.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca</Label>
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Titolo o testo" />
           </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Provincia</Label>
-            <div className="relative">
-              <Input
-                value={provinceName}
-                onChange={(e) => { setProvinceName(e.target.value); setShowProvinceDropdown(true) }}
-                onFocus={() => setShowProvinceDropdown(true)}
-                onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 100)}
-                placeholder="Es. Frosinone"
-              />
-              {showProvinceDropdown && provinceName && searchProvinces(provinceName, regionName || undefined).slice(0, 6).length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
-                  {searchProvinces(provinceName, regionName || undefined).slice(0, 6).map((p) => (
-                    <button
-                      key={`${p.name}-${p.abbreviation || ''}`}
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                      onClick={() => { setProvinceName(p.name); if (!regionName && p.regionName) setRegionName(p.regionName); setShowProvinceDropdown(false) }}
-                    >
-                      {p.name}{p.abbreviation ? ` (${p.abbreviation})` : ''}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Riga 2: Categoria e Stato (2 colonne) */}
-        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</Label>
-            <div className="relative">
-              <Input
-                readOnly
-                value={selectedCategoryTitle ? selectedCategoryTitle : (categoryId ? `ID ${categoryId}` : '')}
-                placeholder="Cerca categoria..."
-                onClick={() => setOpenCategoryModal(true)}
-                onFocus={() => setOpenCategoryModal(true)}
-              />
-              {categoryId ? (
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  onClick={() => { setCategoryId(''); setSelectedCategoryTitle(null) }}
-                  aria-label="Rimuovi categoria selezionata"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Stato</Label>
-            <Select value={status || '__ALL__'} onValueChange={(v) => setStatus(v === '__ALL__' ? '' : (v as ArticleStatus))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tutti" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__ALL__">Tutti</SelectItem>
-                {/* Le opzioni devono combaciare con ArticleStatus::cases() lato API */}
-                <SelectItem value="draft">{ARTICLE_STATUS_LABEL.draft}</SelectItem>
-                <SelectItem value="published">{ARTICLE_STATUS_LABEL.published}</SelectItem>
-                <SelectItem value="revision">{ARTICLE_STATUS_LABEL.revision}</SelectItem>
-                <SelectItem value="unpublished">{ARTICLE_STATUS_LABEL.unpublished}</SelectItem>
-                <SelectItem value="archived">{ARTICLE_STATUS_LABEL.archived}</SelectItem>
-                <SelectItem value="approved">{ARTICLE_STATUS_LABEL.approved}</SelectItem>
-                <SelectItem value="rejected">{ARTICLE_STATUS_LABEL.rejected}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Riga 3: Autore (solo Publisher/EditorInChief), in 2 colonne */}
-        {showAuthorFilter ? (
-          <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Autore</Label>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Regione</Label>
+              <div className="relative">
+                <Input
+                  value={regionName}
+                  onChange={(e) => { setRegionName(e.target.value); setProvinceName('') }}
+                  onFocus={() => setShowRegionDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowRegionDropdown(false), 100)}
+                  placeholder="Es. Lazio"
+                />
+                {showRegionDropdown && regionName && searchRegions(regionName).slice(0, 6).length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
+                    {searchRegions(regionName).slice(0, 6).map((r) => (
+                      <button
+                        key={r.name}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => { setRegionName(r.name); setProvinceName(''); setShowRegionDropdown(false) }}
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Provincia</Label>
+              <div className="relative">
+                <Input
+                  value={provinceName}
+                  onChange={(e) => { setProvinceName(e.target.value); setShowProvinceDropdown(true) }}
+                  onFocus={() => setShowProvinceDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 100)}
+                  placeholder="Es. Frosinone"
+                />
+                {showProvinceDropdown && provinceName && searchProvinces(provinceName, regionName || undefined).slice(0, 6).length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-auto" onMouseDown={(e) => e.preventDefault()}>
+                    {searchProvinces(provinceName, regionName || undefined).slice(0, 6).map((p) => (
+                      <button
+                        key={`${p.name}-${p.abbreviation || ''}`}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hoverbg-gray-800"
+                        onClick={() => { setProvinceName(p.name); if (!regionName && p.regionName) setRegionName(p.regionName); setShowProvinceDropdown(false) }}
+                      >
+                        {p.name}{p.abbreviation ? ` (${p.abbreviation})` : ''}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</Label>
               <div className="relative">
                 <Input
                   readOnly
-                  value={authorName ? authorName : (authorId ? `ID ${authorId}` : '')}
-                  placeholder="Cerca autore..."
-                  onClick={() => setOpenAuthorModal(true)}
-                  onFocus={() => setOpenAuthorModal(true)}
+                  value={selectedCategoryTitle ? selectedCategoryTitle : (categoryId ? `ID ${categoryId}` : '')}
+                  placeholder="Cerca categoria..."
+                  onClick={() => setOpenCategoryModal(true)}
+                  onFocus={() => setOpenCategoryModal(true)}
                 />
-                {authorId ? (
+                {categoryId ? (
                   <button
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    onClick={() => { setAuthorId(''); setAuthorName(null) }}
-                    aria-label="Rimuovi autore selezionato"
+                    onClick={() => { setCategoryId(''); setSelectedCategoryTitle(null) }}
+                    aria-label="Rimuovi categoria selezionata"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 ) : null}
               </div>
             </div>
-            <div />
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Stato</Label>
+              <Select value={status || '__ALL__'} onValueChange={(v) => setStatus(v === '__ALL__' ? '' : (v as ArticleStatus))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tutti" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__ALL__">Tutti</SelectItem>
+                  {/* Le opzioni devono combaciare con ArticleStatus::cases() lato API */}
+                  <SelectItem value="draft">{ARTICLE_STATUS_LABEL.draft}</SelectItem>
+                  <SelectItem value="published">{ARTICLE_STATUS_LABEL.published}</SelectItem>
+                  <SelectItem value="revision">{ARTICLE_STATUS_LABEL.revision}</SelectItem>
+                  <SelectItem value="unpublished">{ARTICLE_STATUS_LABEL.unpublished}</SelectItem>
+                  <SelectItem value="archived">{ARTICLE_STATUS_LABEL.archived}</SelectItem>
+                  <SelectItem value="approved">{ARTICLE_STATUS_LABEL.approved}</SelectItem>
+                  <SelectItem value="rejected">{ARTICLE_STATUS_LABEL.rejected}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : null}
 
+          {showAuthorFilter ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Autore</Label>
+                <div className="relative">
+                  <Input
+                    readOnly
+                    value={authorName ? authorName : (authorId ? `ID ${authorId}` : '')}
+                    placeholder="Cerca autore..."
+                    onClick={() => setOpenAuthorModal(true)}
+                    onFocus={() => setOpenAuthorModal(true)}
+                  />
+                  {authorId ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => { setAuthorId(''); setAuthorName(null) }}
+                      aria-label="Rimuovi autore selezionato"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Riga 2: Ordinamento e pulsante Cerca */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ordina per</Label>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -680,6 +676,7 @@ export default function ArticlesPage() {
             <SelectContent>
               <SelectItem value="published_at">Data pubblicazione</SelectItem>
               <SelectItem value="title">Titolo</SelectItem>
+              {showPriorityColumn && <SelectItem value="priority">Priorità</SelectItem>}
             </SelectContent>
           </Select>
         </div>
@@ -696,6 +693,9 @@ export default function ArticlesPage() {
           </Select>
         </div>
       </FiltersCard>
+
+      {/* Gestione articoli "Ultimissimi" (Publisher) */}
+      <UltimissimiArticlesManager />
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <ResultsHeader
@@ -767,6 +767,225 @@ export default function ArticlesPage() {
         onClose={() => setOpenAuthorModal(false)}
         onSelect={(u) => { setAuthorId(u.id); setAuthorName(u.fullName) }}
       />
+    </div>
+  )
+}
+
+
+function UltimissimiArticlesManager() {
+  const { hasAnyRole } = useAuth()
+  const isPublisher = hasAnyRole(['PUBLISHER'])
+  const [ordered, setOrdered] = useState<Article[]>([])
+  const MAX_SLOTS = 10
+  const [slots, setSlots] = useState<Array<Article | null>>(Array(MAX_SLOTS).fill(null))
+  const [slotInputs, setSlotInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''))
+  const [loading, setLoading] = useState(false)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [orderDirty, setOrderDirty] = useState(false)
+
+  useEffect(() => {
+    if (!isPublisher) return
+    let active = true
+    setLoading(true)
+    ;(async () => {
+      try {
+        const res = await fetchUltimissimiArticles(10)
+        const payload: any = res as any
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.data?.data)
+              ? payload.data.data
+              : []
+        const arr: Article[] = Array.isArray(list) ? list : []
+        if (!active) return
+        setOrdered(arr)
+        const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Article | null>
+        arr.forEach((a) => {
+          const ordNum = Number((a as any).recent_order)
+          const ord = Number.isFinite(ordNum) ? ordNum : null
+          if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+            nextSlots[ord - 1] = a
+          }
+        })
+        if (!nextSlots.some(Boolean)) {
+          for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+            nextSlots[i] = arr[i]
+          }
+        }
+        setSlots(nextSlots)
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => { active = false }
+  }, [isPublisher])
+
+  async function setArticleOrder(article: Article, recent_order: number) {
+    await updateArticle(article.id, { recent_order })
+  }
+
+  async function onRemove(article: Article) {
+    const prev = ordered
+    setSlots((prevSlots) => prevSlots.map((s) => (s && s.id === article.id ? null : s)))
+    setOrdered((list) => list.filter((a) => a.id !== article.id))
+    setOrderDirty(true)
+    try {
+      await setArticleOrder(article, 0)
+    } catch {
+      setOrdered(prev)
+    }
+  }
+
+  async function onAddAt(slotIndex: number) {
+    const idStr = slotInputs[slotIndex]
+    const idNum = Number(idStr)
+    if (!idNum || Number.isNaN(idNum)) return
+    if (ordered.some((a) => a.id === idNum)) return
+    const desiredOrder = slotIndex + 1
+    try {
+      await updateArticle(idNum, { recent_order: desiredOrder })
+      // refresh
+      const res = await fetchUltimissimiArticles(10)
+      const payload: any = res as any
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : []
+      const arr: Article[] = Array.isArray(list) ? list : []
+      setOrdered(arr)
+      const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Article | null>
+      arr.forEach((a) => {
+        const ordNum = Number((a as any).recent_order)
+        const ord = Number.isFinite(ordNum) ? ordNum : null
+        if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+          nextSlots[ord - 1] = a
+        }
+      })
+      if (!nextSlots.some(Boolean)) {
+        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+          nextSlots[i] = arr[i]
+        }
+      }
+      setSlots(nextSlots)
+      setSlotInputs((prev) => prev.map((v, i) => (i === slotIndex ? '' : v)))
+    } catch {}
+  }
+
+  function onDrag(startIndex: number, endIndex: number) {
+    if (Math.abs(startIndex - endIndex) !== 1) return
+    setSlots((prev) => {
+      const arr = [...prev]
+      const temp = arr[startIndex]
+      arr[startIndex] = arr[endIndex]
+      arr[endIndex] = temp
+      return arr
+    })
+    setOrderDirty(true)
+  }
+
+  async function onSaveOrder() {
+    const prev = ordered
+    try {
+      for (let i = 0; i < slots.length; i++) {
+        const art = slots[i]
+        if (!art) continue
+        const desired = i + 1
+        const current = Number((art as any).recent_order) || 0
+        if (current !== desired) {
+          await setArticleOrder(art, desired)
+        }
+      }
+      const res = await fetchUltimissimiArticles(10)
+      const payload: any = res as any
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : []
+      const arr: Article[] = Array.isArray(list) ? list : []
+      setOrdered(arr)
+      const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Article | null>
+      arr.forEach((a) => {
+        const ordNum = Number((a as any).recent_order)
+        const ord = Number.isFinite(ordNum) ? ordNum : null
+        if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+          nextSlots[ord - 1] = a
+        }
+      })
+      if (!nextSlots.some(Boolean)) {
+        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+          nextSlots[i] = arr[i]
+        }
+      }
+      setSlots(nextSlots)
+      setOrderDirty(false)
+      toast.success('Ordine aggiornato')
+    } catch {
+      setOrdered(prev)
+      toast.error('Aggiornamento ordine non riuscito')
+    }
+  }
+
+  if (!isPublisher) return null
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold">Articoli “Ultimissimi” (ordinati)</h3>
+        {orderDirty && (
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" onClick={onSaveOrder} disabled={loading}>Salva ordine</Button>
+          </div>
+        )}
+      </div>
+      {loading ? (
+        <div className="text-sm text-gray-500">Caricamento...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {slots.map((a, idx) => (
+            <div
+              key={a ? a.id : `slot-${idx}`}
+              className={`rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900 text-sm ${draggingIndex===idx ? 'ring-2 ring-amber-500' : ''}`}
+              draggable
+              onDragStart={() => a && setDraggingIndex(idx)}
+              onDragOver={(e) => { e.preventDefault(); if (draggingIndex!==null && draggingIndex!==idx) onDrag(draggingIndex, idx); if (a || draggingIndex!==null) setDraggingIndex(idx) }}
+              onDrop={() => setDraggingIndex(null)}
+              onDragEnd={() => setDraggingIndex(null)}
+            >
+              {a ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-600 text-white text-xs font-bold">{Number.isFinite(Number((a as any).recent_order)) ? Number((a as any).recent_order) : (idx+1)}</div>
+                    <div className="font-medium truncate max-w-[180px]" title={a.title}>{a.title}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-500">#{a.id}</span>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => { void onRemove(a) }}>Rimuovi</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gray-300 text-gray-700 text-xs font-bold">{idx+1}</div>
+                    <div className="font-medium text-gray-500">Slot vuoto</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input value={slotInputs[idx]} onChange={(e) => setSlotInputs((prev) => prev.map((v, i) => i===idx ? e.target.value : v))} placeholder="ID" className="w-20" />
+                    <Button type="button" size="sm" onClick={() => { void onAddAt(idx) }}>Aggiungi</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

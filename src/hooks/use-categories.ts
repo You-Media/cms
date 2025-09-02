@@ -1,6 +1,6 @@
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/config/endpoints'
-import type { CategoriesSearchParams, CategoriesSearchResponse, CreateCategoryPayload, UpdateCategoryPayload, CategoryTreeResponse } from '@/types/categories'
+import type { CategoriesSearchParams, CategoriesSearchResponse, CreateCategoryPayload, UpdateCategoryPayload, CategoryTreeResponse, Category } from '@/types/categories'
 
 function buildQueryString(params: CategoriesSearchParams): string {
   const query = new URLSearchParams()
@@ -32,5 +32,9 @@ export async function fetchCategoryTree(): Promise<CategoryTreeResponse> {
 
 export async function updateCategory(id: number | string, payload: UpdateCategoryPayload): Promise<{ status: string; message: string }> {
   return api.patch<{ status: string; message: string }>(API_ENDPOINTS.CATEGORIES.UPDATE(id), payload)
+}
+
+export async function fetchOrderedCategories(): Promise<{ status: string; message: string; data: Category[] } | { data: Category[] }> {
+  return api.get<any>(API_ENDPOINTS.CATEGORIES.ORDERED)
 }
 

@@ -28,12 +28,19 @@ export default function TagSelectModal({ open, onClose, onSelect }: TagSelectMod
     setTotalPages(1)
     setQuery('')
     setHasSearched(false)
+    void runSearch(1, { allowEmpty: true })
   }, [open])
 
-  async function runSearch(p = 1) {
+  async function runSearch(p = 1, opts?: { allowEmpty?: boolean }) {
     if (!open) return
     const q = query.trim()
-    if (!q || q.length < 2) {
+    const allowEmpty = Boolean(opts?.allowEmpty)
+    const params = new URLSearchParams()
+    params.append('page', String(p))
+    params.append('per_page', '10')
+    if (q && q.length >= 2) {
+      params.append('search', q)
+    } else if (!allowEmpty) {
       setResults([])
       setPage(1)
       setTotalPages(1)
@@ -42,10 +49,6 @@ export default function TagSelectModal({ open, onClose, onSelect }: TagSelectMod
     }
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      params.append('page', String(p))
-      params.append('per_page', '10')
-      params.append('search', q)
       const res = await api.get<any>(`/tags/search?${params.toString()}`)
       const d = res?.data
       const list = Array.isArray(d?.data) ? d.data : []
@@ -94,11 +97,7 @@ export default function TagSelectModal({ open, onClose, onSelect }: TagSelectMod
               {loading && <li className="p-4 text-sm text-gray-500">Caricamento...</li>}
               {emptyState && (
                 <li className="p-4 text-sm text-gray-500">
-                  {query.trim().length < 2
-                    ? 'Digita almeno 2 caratteri per cercare'
-                    : hasSearched
-                      ? 'Nessun risultato'
-                      : 'Premi Cerca per avviare la ricerca'}
+                  {hasSearched ? 'Nessun risultato' : (query.trim().length < 2 ? 'Digita almeno 2 caratteri per cercare' : 'Premi Cerca per avviare la ricerca')}
                 </li>
               )}
               {!loading && results.map((t) => (
@@ -123,8 +122,8 @@ export default function TagSelectModal({ open, onClose, onSelect }: TagSelectMod
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-gray-500">Pagina {page} di {totalPages}</div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" disabled={page <= 1} onClick={() => void runSearch(page - 1)}>Prec</Button>
-              <Button type="button" variant="secondary" disabled={page >= totalPages} onClick={() => void runSearch(page + 1)}>Succ</Button>
+              <Button type="button" variant="secondary" disabled={page <= 1} onClick={() => void runSearch(page - 1, { allowEmpty: query.trim().length < 2 })}>Prec</Button>
+              <Button type="button" variant="secondary" disabled={page >= totalPages} onClick={() => void runSearch(page + 1, { allowEmpty: query.trim().length < 2 })}>Succ</Button>
             </div>
           </div>
         </div>

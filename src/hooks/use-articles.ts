@@ -20,6 +20,7 @@ export type Article = {
   province?: string
   cover_preview?: string
   weekly_views?: number
+  recent_order?: number
 }
 
 export function useArticles() {
@@ -44,6 +45,7 @@ export function useArticles() {
       qs.append('per_page', String(params.per_page ?? 10))
       qs.append('page', String(params.page ?? 1))
 
+      // Sopprimi i toast globali e gestisci qui per evitare duplicati
       const res = await api.get<any>(`${API_ENDPOINTS.ARTICLES.FILTER}?${qs.toString()}`, undefined, { suppressGlobalToasts: true })
       const d = res?.data
       let list: Article[] = []
@@ -73,8 +75,9 @@ export function useArticles() {
       setTotalPages(lastPageNum)
       setPage(currentPageNum)
     } catch (error) {
-      if (error instanceof ApiError && error.status === 500) {
-        toast.error('Qualcosa è andato storto. Riprova più tardi.')
+      // Mostra un solo toast lato hook per errori server
+      if (error instanceof ApiError && error.status >= 500) {
+        toast.error('Qualcosa è andato storto, riprova più tardi')
       }
       setResults([])
       setTotal(0)
@@ -86,6 +89,18 @@ export function useArticles() {
   }, [])
 
   return { results, loading, page, totalPages, total, setPage, search }
+}
+
+export async function fetchUltimissimiArticles(limit: number = 10): Promise<{ status?: string; message?: string; data: Article[] } | { data: Article[] } | Article[]> {
+  const qs = new URLSearchParams()
+  if (limit) qs.append('limit', String(limit))
+  // Sopprimi i toast globali; gestiamo errori a livello chiamante
+  const res = await api.get<any>(`${API_ENDPOINTS.ARTICLES.ULTIMISSIMI}?${qs.toString()}`, undefined, { suppressGlobalToasts: true })
+  return res
+}
+
+export async function updateArticle(id: number | string, payload: Partial<Article>): Promise<{ status?: string; message?: string }> {
+  return api.patch<any>(API_ENDPOINTS.ARTICLES.UPDATE(id), payload, undefined, { suppressGlobalToasts: true })
 }
 
 

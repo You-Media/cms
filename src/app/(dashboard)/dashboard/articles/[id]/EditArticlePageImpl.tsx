@@ -673,8 +673,8 @@ export default function EditArticlePageImpl() {
       toast.error('Meta description troppo lunga (max 160)')
       return false
     }
-    if (priority !== '' && (priority < 0 || priority > 10)) {
-      toast.error('Priorità deve essere tra 0 e 10')
+    if (priority !== '' && (priority < 0 || priority > 100)) {
+      toast.error('Priorità deve essere tra 0 e 100')
       return false
     }
     return true
@@ -1256,12 +1256,12 @@ export default function EditArticlePageImpl() {
                     <Input 
                       type="number" 
                       min="0" 
-                      max="10" 
+                      max="100" 
                       value={priority} 
                       onChange={(e) => setPriority(e.target.value === '' ? '' : Number(e.target.value))} 
-                      placeholder="0-10"
+                      placeholder="0-100"
                     />
-                    <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-10)</p>
+                    <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-100)</p>
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
-import { searchCategories, deleteCategory, createCategory, updateCategory } from '@/hooks/use-categories'
+import { searchCategories, deleteCategory, createCategory, updateCategory, fetchOrderedCategories } from '@/hooks/use-categories'
 import type { Category } from '@/types/categories'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,234 @@ import { PaginationBar } from '@/components/table/PaginationBar'
 import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
 import { toast } from 'sonner'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
+
+function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number }) {
+  const { hasAnyRole } = useAuth()
+  const isPublisher = hasAnyRole(['PUBLISHER'])
+  const [ordered, setOrdered] = useState<Category[]>([])
+  const MAX_SLOTS = 10
+  const [slots, setSlots] = useState<Array<Category | null>>(Array(MAX_SLOTS).fill(null))
+  const [slotInputs, setSlotInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''))
+  const [loading, setLoading] = useState(false)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  // Removed StrictMode guard: always fetch when isPublisher is true
+
+  useEffect(() => {
+    if (!isPublisher) return
+    let active = true
+    setLoading(true)
+    ;(async () => {
+      try {
+        console.info('[OrderedCategories] fetching...')
+        const res = await fetchOrderedCategories()
+        const payload: any = res as any
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.data?.data)
+              ? payload.data.data
+              : []
+        const arr: Category[] = Array.isArray(list) ? list : []
+        if (active) {
+          console.info('[OrderedCategories] fetched items:', arr.length)
+          setOrdered(arr)
+          // Build slots by order 1..MAX_SLOTS
+          const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Category | null>
+          arr.forEach((c) => {
+            const ordNum = Number((c as any).order)
+            const ord = Number.isFinite(ordNum) ? ordNum : null
+            if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+              nextSlots[ord - 1] = c
+            }
+          })
+          // Fallback: if none placed, fill by array order
+          if (!nextSlots.some(Boolean)) {
+            for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+              nextSlots[i] = arr[i]
+            }
+          }
+          setSlots(nextSlots)
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => { active = false }
+  }, [isPublisher, reloadToken])
+
+  async function setCategoryOrder(cat: Category, order: number) {
+    await updateCategory(cat.id, { order })
+  }
+
+  async function onRemove(cat: Category) {
+    const prev = ordered
+    // Optimistic: clear slot where this category sits
+    setSlots((prevSlots) => prevSlots.map((s) => (s && s.id === cat.id ? null : s)))
+    setOrdered((list) => list.filter((c) => c.id !== cat.id))
+    setOrderDirty(true)
+    try {
+      await setCategoryOrder(cat, 0)
+    } catch {
+      setOrdered(prev)
+    }
+  }
+
+  async function onAddAt(slotIndex: number) {
+    const idStr = slotInputs[slotIndex]
+    const idNum = Number(idStr)
+    if (!idNum || Number.isNaN(idNum)) return
+    if (ordered.some((c) => c.id === idNum)) return
+    const desiredOrder = slotIndex + 1
+    try {
+      await updateCategory(idNum, { order: desiredOrder })
+      // refresh
+      const res = await fetchOrderedCategories()
+      const payload: any = res as any
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : []
+      const arr: Category[] = Array.isArray(list) ? list : []
+      setOrdered(arr)
+      const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Category | null>
+      arr.forEach((c) => {
+        const ordNum = Number((c as any).order)
+        const ord = Number.isFinite(ordNum) ? ordNum : null
+        if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+          nextSlots[ord - 1] = c
+        }
+      })
+      if (!nextSlots.some(Boolean)) {
+        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+          nextSlots[i] = arr[i]
+        }
+      }
+      setSlots(nextSlots)
+      setSlotInputs((prev) => prev.map((v, i) => (i === slotIndex ? '' : v)))
+    } catch {}
+  }
+
+  function onDrag(startIndex: number, endIndex: number) {
+    // Allow only contiguous move
+    if (Math.abs(startIndex - endIndex) !== 1) return
+    setSlots((prev) => {
+      const arr = [...prev]
+      const temp = arr[startIndex]
+      arr[startIndex] = arr[endIndex]
+      arr[endIndex] = temp
+      return arr
+    })
+    setOrderDirty(true)
+  }
+
+  const [orderDirty, setOrderDirty] = useState(false)
+
+  async function onSaveOrder() {
+    const prev = ordered
+    try {
+      for (let i = 0; i < slots.length; i++) {
+        const cat = slots[i]
+        if (!cat) continue
+        const desired = i + 1
+        const current = Number((cat as any).order) || 0
+        if (current !== desired) {
+          await setCategoryOrder(cat, desired)
+        }
+      }
+      // refresh
+      const res = await fetchOrderedCategories()
+      const payload: any = res as any
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : []
+      const arr: Category[] = Array.isArray(list) ? list : []
+      setOrdered(arr)
+      const nextSlots = Array(MAX_SLOTS).fill(null) as Array<Category | null>
+      arr.forEach((c) => {
+        const ordNum = Number((c as any).order)
+        const ord = Number.isFinite(ordNum) ? ordNum : null
+        if (ord && ord >= 1 && ord <= MAX_SLOTS) {
+          nextSlots[ord - 1] = c
+        }
+      })
+      if (!nextSlots.some(Boolean)) {
+        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
+          nextSlots[i] = arr[i]
+        }
+      }
+      setSlots(nextSlots)
+      setOrderDirty(false)
+      toast.success('Ordine aggiornato')
+    } catch {
+      setOrdered(prev)
+      toast.error('Aggiornamento ordine non riuscito')
+    }
+  }
+
+  if (!isPublisher) return null
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold">Categorie in home (ordinate)</h3>
+        {orderDirty && (
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" onClick={onSaveOrder} disabled={loading}>Salva ordine</Button>
+          </div>
+        )}
+      </div>
+      {loading ? (
+        <div className="text-sm text-gray-500">Caricamento...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {slots.map((c, idx) => (
+            <div
+              key={c ? c.id : `slot-${idx}`}
+              className={`rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-900 text-sm ${draggingIndex===idx ? 'ring-2 ring-amber-500' : ''}`}
+              draggable
+              onDragStart={() => c && setDraggingIndex(idx)}
+              onDragOver={(e) => { e.preventDefault(); if (draggingIndex!==null && draggingIndex!==idx) onDrag(draggingIndex, idx); if (c || draggingIndex!==null) setDraggingIndex(idx) }}
+              onDrop={() => setDraggingIndex(null)}
+              onDragEnd={() => setDraggingIndex(null)}
+            >
+              {c ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-600 text-white text-xs font-bold">{Number.isFinite(Number((c as any).order)) ? Number((c as any).order) : (idx+1)}</div>
+                    <div className="font-medium truncate max-w-[180px]" title={c.title}>{c.title}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-500">#{c.id}</span>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => { void onRemove(c) }}>Rimuovi</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-gray-300 text-gray-700 text-xs font-bold">{idx+1}</div>
+                    <div className="font-medium text-gray-500">Slot vuoto</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input value={slotInputs[idx]} onChange={(e) => setSlotInputs((prev) => prev.map((v, i) => i===idx ? e.target.value : v))} placeholder="ID" className="w-20" />
+                    <Button type="button" size="sm" onClick={() => { void onAddAt(idx) }}>Aggiungi</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function CategoriesPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
@@ -39,6 +267,7 @@ export default function CategoriesPage() {
   const [isSearchingParentEdit, setIsSearchingParentEdit] = useState<boolean>(false)
   const [editOrder, setEditOrder] = useState<number | ''>('')
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
+  const [orderedReloadToken, setOrderedReloadToken] = useState<number>(0)
 
   // Form state (create)
   const [newTitle, setNewTitle] = useState<string>('')
@@ -100,7 +329,7 @@ export default function CategoriesPage() {
     setEditTitle(category.title)
     setEditParentId(category.parent_id ? String(category.parent_id) : '')
     setEditParentSearch(category.parent?.title || '')
-    setEditOrder(category.order || '')
+    setEditOrder(category.order ?? '')
     setIsEditOpen(true)
   }
 
@@ -155,37 +384,42 @@ export default function CategoriesPage() {
       />
 
       {/* Search and Filters Card */}
-      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={5} submitUseEmptyLabel>
-        <div className="space-y-2">
-          <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
-          <div className="relative">
-            <Input 
-              id="search" 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              placeholder="Cerca nelle categorie..." 
-              className="pl-10"
-            />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+      <FiltersCard onSubmit={onSearchSubmit} isLoading={isLoading} gridCols={3} submitUseEmptyLabel submitFullWidth={true}>
+        {/* Riga 1: Ricerca e Genitore */}
+        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="search" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ricerca per titolo</Label>
+            <div className="relative">
+              <Input 
+                id="search" 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder="Cerca nelle categorie..." 
+                className="pl-10"
+              />
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="parent" className="text-sm font-medium text-gray-700 dark:text-gray-300">Categoria genitore</Label>
+            <div className="relative">
+              <Input 
+                id="parent" 
+                value={parentId} 
+                onChange={(e) => setParentId(e.target.value)} 
+                placeholder="ID categoria (es. 1)" 
+                className="pl-10"
+              />
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+              </svg>
+            </div>
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="parent" className="text-sm font-medium text-gray-700 dark:text-gray-300">Categoria genitore</Label>
-          <div className="relative">
-            <Input 
-              id="parent" 
-              value={parentId} 
-              onChange={(e) => setParentId(e.target.value)} 
-              placeholder="ID categoria (es. 1)" 
-              className="pl-10"
-            />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-            </svg>
-          </div>
-        </div>
+
+        {/* Riga 2: Ordinamento e Direzione */}
         <div className="space-y-2">
           <Label htmlFor="sort_by" className="text-sm font-medium text-gray-700 dark:text-gray-300">Ordina per</Label>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -211,6 +445,9 @@ export default function CategoriesPage() {
           </Select>
         </div>
       </FiltersCard>
+
+      {/* Gestione categorie ordinate (Publisher) */}
+      <OrderedCategoriesManager reloadToken={orderedReloadToken} />
 
       {/* Results Card */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -611,6 +848,9 @@ export default function CategoriesPage() {
                     setIsEditOpen(false)
                     // refresh
                     void loadData()
+                    if (payload.order !== undefined) {
+                      setOrderedReloadToken((v) => v + 1)
+                    }
                   } catch {
                     // Errori gestiti globalmente
                   }
@@ -812,6 +1052,9 @@ export default function CategoriesPage() {
                     setParentSearch('')
                     setParentSearchResults([])
                     void loadData()
+                    if (newOrder !== '') {
+                      setOrderedReloadToken((v) => v + 1)
+                    }
                   } catch {
                     // Errori gestiti globalmente
                   }

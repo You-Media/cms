@@ -22,18 +22,23 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
 
   useEffect(() => {
     if (!open) return
-    // Reset state on open; do not prefetch results
+    // Reset state on open and prefetch first page with empty search
     setResults([])
     setPage(1)
     setTotalPages(1)
     setQuery('')
     setHasSearched(false)
+    void runSearch(1, { allowEmpty: true })
   }, [open])
 
-  async function runSearch(p = 1) {
+  async function runSearch(p = 1, opts?: { allowEmpty?: boolean }) {
     if (!open) return
     const q = query.trim()
-    if (!q || q.length < 2) {
+    const allowEmpty = Boolean(opts?.allowEmpty)
+    const params: any = { per_page: 10, page: p }
+    if (q && q.length >= 2) params.search = q
+    else if (!allowEmpty) {
+      // If empty search is not allowed, reset and exit
       setResults([])
       setPage(1)
       setTotalPages(1)
@@ -42,7 +47,7 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
     }
     setLoading(true)
     try {
-      const res = await searchCategories({ search: q, per_page: 10, page: p })
+      const res = await searchCategories(params)
       setResults(res.data.data)
       setTotalPages(res.data.last_page)
       setPage(p)
@@ -87,11 +92,9 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
               {loading && <li className="p-4 text-sm text-gray-500">Caricamento...</li>}
               {emptyState && (
                 <li className="p-4 text-sm text-gray-500">
-                  {query.trim().length < 2
-                    ? 'Digita almeno 2 caratteri per cercare'
-                    : hasSearched
-                      ? 'Nessun risultato'
-                      : 'Premi Cerca per avviare la ricerca'}
+                  {hasSearched
+                    ? 'Nessun risultato'
+                    : (query.trim().length < 2 ? 'Digita almeno 2 caratteri per cercare' : 'Premi Cerca per avviare la ricerca')}
                 </li>
               )}
               {!loading && results.map((c) => (
@@ -120,8 +123,8 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-gray-500">Pagina {page} di {totalPages}</div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" disabled={page <= 1} onClick={() => void runSearch(page - 1)}>Prec</Button>
-              <Button type="button" variant="secondary" disabled={page >= totalPages} onClick={() => void runSearch(page + 1)}>Succ</Button>
+              <Button type="button" variant="secondary" disabled={page <= 1} onClick={() => void runSearch(page - 1, { allowEmpty: query.trim().length < 2 })}>Prec</Button>
+              <Button type="button" variant="secondary" disabled={page >= totalPages} onClick={() => void runSearch(page + 1, { allowEmpty: query.trim().length < 2 })}>Succ</Button>
             </div>
           </div>
         </div>
