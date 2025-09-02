@@ -46,6 +46,7 @@ export default function BannersPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState<number>(1)
   const lastKeyRef = useRef<string>('')
+  const lastSubmittedFiltersRef = useRef<{ model?: BannerModel | ''; search?: string; position?: BannerPosition | ''; status?: BannerStatus | ''; sortBy?: 'created_at' | 'order'; sortDirection?: 'asc' | 'desc' } | null>(null)
 
   const canDelete = hasPermission('delete_banner')
   const canPublish = hasPermission('publish_banner')
@@ -56,13 +57,24 @@ export default function BannersPage() {
     const key = `${page}|${perPage}`
     if (lastKeyRef.current === key) return
     lastKeyRef.current = key
-    filterBanners({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+    const f = lastSubmittedFiltersRef.current
+    filterBanners({
+      page,
+      per_page: perPage,
+      model: f?.model || undefined,
+      search: f?.search || undefined,
+      position: f?.position || undefined,
+      status: f?.status || undefined,
+      sort_by: sortBy,
+      sort_direction: sortDirection,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
+    lastSubmittedFiltersRef.current = { model, search, position, status, sortBy, sortDirection }
     filterBanners({
       page: 1,
       per_page: perPage,

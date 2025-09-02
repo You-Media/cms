@@ -72,6 +72,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter | ''>('')
   const ALL_VALUE = '__ALL__'
   const lastParamsRef = useRef<string>('')
+  const lastSubmittedFiltersRef = useRef<{ search?: string; roleFilter?: UserRoleFilter | ''; forcedRoles?: UserRoleFilter[] | undefined } | null>(null)
   const prevPerPageRef = useRef<number>(perPage)
   const [permModalOpen, setPermModalOpen] = useState(false)
   const [permUser, setPermUser] = useState<{ id: number; fullName: string; permissions: string[]; roles: string[] } | null>(null)
@@ -139,6 +140,7 @@ export default function UsersPage() {
     const rolesParam = isEditorInChiefOnly
       ? (['Journalist'] as UserRoleFilter[])
       : (roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined))
+    lastSubmittedFiltersRef.current = { search, roleFilter, forcedRoles: rolesParam }
     void searchUsers({
       page: 1,
       per_page: perPage,
@@ -157,13 +159,16 @@ export default function UsersPage() {
     const key = `${page}|${perPage}`
     if (lastParamsRef.current === key) return
     lastParamsRef.current = key
+    const f = lastSubmittedFiltersRef.current
     const rolesParam = isEditorInChiefOnly
       ? (['Journalist'] as UserRoleFilter[])
-      : (roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined))
+      : (f?.forcedRoles || (roleFilter ? [roleFilter] : (allowedRoleOptions.length > 0 ? allowedRoleOptions : undefined)))
     void searchUsers({
       page,
       per_page: perPage,
-      search: (search.trim().length === 0 || search.trim().length >= 3) ? (search.trim() || undefined) : undefined,
+      search: (f?.search !== undefined ? f.search : search).trim().length === 0 || (f?.search !== undefined ? f.search : search).trim().length >= 3
+        ? ((f?.search !== undefined ? f.search : search).trim() || undefined)
+        : undefined,
       roles: rolesParam,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -53,6 +53,7 @@ export default function ArticlesPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [perPage, setPerPage] = useState(20)
   const lastKeyRef = useRef<string>('')
+  const lastSubmittedFiltersRef = useRef<{ query?: string; categoryId?: number | ''; regionName?: string; provinceName?: string; status?: '' | ArticleStatus; authorId?: number | '' } | null>(null)
 
   // Rimosso fetch dell'albero categorie: non necessario per il filtro
   const [showRegionDropdown, setShowRegionDropdown] = useState(false)
@@ -69,7 +70,19 @@ export default function ArticlesPage() {
     const key = `${page}|${perPage}`
     if (lastKeyRef.current === key) return
     lastKeyRef.current = key
-    void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
+    const f = lastSubmittedFiltersRef.current
+    void search({
+      page,
+      per_page: perPage,
+      search: f?.query || undefined,
+      category_id: f?.categoryId || undefined,
+      region_name: f?.regionName || undefined,
+      province_name: f?.provinceName || undefined,
+      status: (f?.status || undefined) as ArticleStatus | undefined,
+      author_id: f?.authorId || undefined,
+      sort_by: sortBy,
+      sort_direction: sortDirection,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
@@ -92,6 +105,7 @@ export default function ArticlesPage() {
       setPage(1)
       return
     }
+    lastSubmittedFiltersRef.current = { query, categoryId, regionName, provinceName, status, authorId }
     void search({
       page: 1,
       per_page: perPage,
@@ -208,40 +222,38 @@ export default function ArticlesPage() {
       key: 'categories',
       header: 'Categoria',
       cell: (a) => {
-        const first = Array.isArray(a.categories) ? a.categories[0] : undefined
-        if (!first) return <span className="text-sm">-</span>
-        const label = first.title || '-'
-        const isChild = typeof first.slug === 'string' && first.slug.includes('/')
-        const badgeClass = isChild
-          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ring-1 ring-amber-300/60 dark:ring-amber-700/60'
-          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300/60 dark:ring-blue-700/60'
-        const fullPath = isChild ? formatCategoryPathFromSlug(first.slug, label) : ''
+        const cats = Array.isArray(a.categories) ? a.categories : []
+        if (cats.length === 0) return <span className="text-sm">-</span>
         return (
-          <div className="max-w-[260px] text-center">
-            {isChild ? (
-              <TooltipProvider delayDuration={0} skipDelayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      role="button"
-                      onClick={() => applyCategoryFilter(first.id, label)}
-                      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-sm cursor-pointer ${badgeClass}`}
-                    >
-                      {label}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{fullPath}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <span
-                role="button"
-                onClick={() => applyCategoryFilter(first.id, label)}
-                className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-sm cursor-pointer ${badgeClass}`}
-              >
-                {label}
-              </span>
-            )}
+          <div className="flex flex-wrap gap-1 max-w-[360px]">
+            {cats.map((c) => {
+              const label = c.title || '-'
+              const isChild = typeof c.slug === 'string' && c.slug.includes('/')
+              const badgeClass = isChild
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ring-1 ring-amber-300/60 dark:ring-amber-700/60'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300/60 dark:ring-blue-700/60'
+              const fullPath = isChild ? formatCategoryPathFromSlug(c.slug, label) : ''
+              const badge = (
+                <span
+                  key={`cat-${a.id}-${c.id}`}
+                  role="button"
+                  onClick={() => applyCategoryFilter(c.id, label)}
+                  className={`inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full shadow-sm cursor-pointer ${badgeClass}`}
+                >
+                  {label}
+                </span>
+              )
+              return isChild ? (
+                <TooltipProvider key={`t-${a.id}-${c.id}`} delayDuration={0} skipDelayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                    <TooltipContent>{fullPath}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                badge
+              )
+            })}
           </div>
         )
       },

@@ -43,12 +43,14 @@ export default function TagsPage() {
     description: '',
   })
   const lastParamsRef = useRef<string>('')
+  const lastSubmittedFiltersRef = useRef<{ searchTerm?: string } | null>(null)
 
   useEffect(() => {
     const key = `${page}|${perPage}`
     if (lastParamsRef.current === key) return
     lastParamsRef.current = key
-    fetchTags(page, searchTerm, perPage)
+    const f = lastSubmittedFiltersRef.current
+    fetchTags(page, f?.searchTerm ?? searchTerm, perPage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage])
 
@@ -65,6 +67,7 @@ export default function TagsPage() {
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     setPage(1)
+    lastSubmittedFiltersRef.current = { searchTerm }
     fetchTags(1, searchTerm, perPage)
   }
 
