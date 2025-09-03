@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,6 +15,14 @@ import { useSites } from '@/hooks/use-sites'
 import React from 'react'
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="max-w-md w-full mx-auto rounded-xl p-6"><div className="text-sm text-gray-500">Caricamento…</div></div>}>
+      <ResetPasswordInner />
+    </Suspense>
+  )
+}
+
+function ResetPasswordInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token') || ''
@@ -44,7 +52,6 @@ export default function ResetPasswordPage() {
   ]), [])
 
   const onSubmit = async (values: ResetPasswordForm) => {
-    
     // Controlla se tutti i campi richiesti sono presenti
     if (!values.site) {
       toast.error('Errore', {
@@ -52,7 +59,7 @@ export default function ResetPasswordPage() {
       })
       return
     }
-    
+
     setIsLoading(true)
     try {
       await api.resetPassword(values, values.site)
@@ -63,13 +70,13 @@ export default function ResetPasswordPage() {
     } catch (error) {
       // Gestisci errori specifici
       let errorMessage = 'Impossibile aggiornare la password'
-      
+
       if (error instanceof AuthError) {
         errorMessage = error.message
       } else if (error instanceof Error) {
         errorMessage = error.message
       }
-      
+
       toast.error('Errore', {
         description: errorMessage,
       })

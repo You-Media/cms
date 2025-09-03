@@ -10,10 +10,10 @@ import { ApiError } from '@/lib/api'
 import ImageCropperModal from '@/components/forms/image-cropper-modal'
 import { toast } from 'sonner'
 import { fetchUserDetail, updateUser, invalidateUserDetailCache } from '@/hooks/use-users'
+import { useParams } from 'next/navigation'
 
-type EditUserPageProps = { params: { id: string } }
-
-export default function EditUserPage({ params }: EditUserPageProps) {
+export default function EditUserPage() {
+  const params = useParams<{ id: string }>()
   const userId = params.id
   const { hasPermission, hasAnyRole, isSuperAdmin } = useAuth()
   
