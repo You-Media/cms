@@ -821,11 +821,7 @@ function UltimissimiArticlesManager() {
             nextSlots[ord - 1] = a
           }
         })
-        if (!nextSlots.some(Boolean)) {
-          for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-            nextSlots[i] = arr[i]
-          }
-        }
+        // No fallback: slots are filled strictly by 'recent_order' value; others remain empty
         setSlots(nextSlots)
       } finally {
         if (active) setLoading(false)
@@ -881,14 +877,25 @@ function UltimissimiArticlesManager() {
           nextSlots[ord - 1] = a
         }
       })
-      if (!nextSlots.some(Boolean)) {
-        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-          nextSlots[i] = arr[i]
-        }
-      }
+      // No fallback: slots are filled strictly by 'recent_order' value; others remain empty
       setSlots(nextSlots)
       setSlotInputs((prev) => prev.map((v, i) => (i === slotIndex ? '' : v)))
-    } catch {}
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        const fieldErrors = (error as any).errors as Record<string, string[]> | undefined
+        let description = ''
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          try {
+            description = Object.values(fieldErrors).flat().filter(Boolean).join('\n')
+          } catch {}
+        }
+        toast.error('Richiesta non valida', { description: description || 'Controlla i dati inseriti.' })
+      } else if (error instanceof ApiError && error.status === 401) {
+        toast.error('Non autorizzato')
+      } else {
+        toast.error('Operazione non riuscita')
+      }
+    }
   }
 
   // Drag & drop: consenti spostamento solo verso slot vuoti, senza shift degli altri
@@ -896,14 +903,33 @@ function UltimissimiArticlesManager() {
   async function onSaveOrder() {
     const prev = ordered
     try {
-      for (let i = 0; i < slots.length; i++) {
-        const art = slots[i]
-        if (!art) continue
-        const desired = i + 1
-        const current = Number((art as any).recent_order) || 0
-        if (current !== desired) {
-          await setArticleOrder(art, desired)
+      // Conflict-free update without temporary high orders
+      const assigned = slots
+        .map((art, i) => (art ? { id: (art as Article).id, art: art as Article, final: i + 1 } : null))
+        .filter(Boolean) as Array<{ id: number; art: Article; final: number }>
+
+      // Current occupied orders (only >0)
+      const prevByOrder = new Map<number, Article>()
+      for (const a of prev) {
+        const cur = Number((a as any).recent_order) || 0
+        if (cur > 0) prevByOrder.set(cur, a)
+      }
+
+      // Desired target orders
+      const desiredByOrder = new Map<number, Article>()
+      for (const a of assigned) desiredByOrder.set(a.final, a.art)
+
+      // Phase 1: clear conflicts
+      for (const [ord, art] of prevByOrder) {
+        const desiredArt = desiredByOrder.get(ord)
+        if (!desiredArt || desiredArt.id !== art.id) {
+          await setArticleOrder(art, 0)
         }
+      }
+
+      // Phase 2: set final target orders
+      for (const a of assigned) {
+        await setArticleOrder(a.art, a.final)
       }
       const res = await fetchUltimissimiArticles(10)
       const payload: any = res as any
@@ -924,11 +950,7 @@ function UltimissimiArticlesManager() {
           nextSlots[ord - 1] = a
         }
       })
-      if (!nextSlots.some(Boolean)) {
-        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-          nextSlots[i] = arr[i]
-        }
-      }
+      // No fallback: slots are filled strictly by 'recent_order' value; others remain empty
       setSlots(nextSlots)
       setOrderDirty(false)
       toast.success('Ordine aggiornato')
@@ -961,12 +983,22 @@ function UltimissimiArticlesManager() {
               draggable
               onDragStart={() => a && setDraggingIndex(idx)}
               onDragOver={(e) => { e.preventDefault() }}
-              onDrop={() => {
-                if (draggingIndex!==null && draggingIndex!==idx && !slots[idx]) {
+              onDrop={(e) => {
+                e.preventDefault()
+                if (draggingIndex!==null && draggingIndex!==idx) {
                   setSlots((prev) => {
                     const arr = [...prev]
-                    arr[idx] = prev[draggingIndex]
-                    arr[draggingIndex] = null
+                    const dragged = prev[draggingIndex]
+                    const target = prev[idx]
+                    if (!target) {
+                      // Move into empty slot, leave gap at source
+                      arr[idx] = dragged || null
+                      arr[draggingIndex] = null
+                    } else {
+                      // Swap by default when target occupied
+                      arr[idx] = dragged || null
+                      arr[draggingIndex] = target || null
+                    }
                     return arr
                   })
                   setOrderDirty(true)

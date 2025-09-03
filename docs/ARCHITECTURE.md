@@ -697,7 +697,7 @@ export const ROUTES = {
     USERS: {
       LIST: '/dashboard/users',
       NEW: '/dashboard/users/new',
-      DETAIL: (id: string) => `/dashboard/users/${id}`,
+      DETAIL: (id: string) => `/dashboard/users/edit?id=${id}`,
     },
     ROLES: {
       LIST: '/dashboard/roles',

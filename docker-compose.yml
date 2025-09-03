@@ -4,16 +4,11 @@ services:
   cms:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        NODE_ENV: production
+      dockerfile: Dockerfile.static
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       - NODE_ENV=production
-      - NEXT_TELEMETRY_DISABLED=1
-    env_file:
-      - .env
     restart: unless-stopped
     networks:
       - cms-network
@@ -39,6 +34,22 @@ services:
       - cms-network
     profiles:
       - dev
+
+  # Serve already-built ./out via Apache without building inside Docker
+  cms-static-mount:
+    image: httpd:2.4-alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./out:/usr/local/apache2/htdocs:ro
+      - ./apache.conf:/usr/local/apache2/conf/httpd.conf:ro
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - cms-network
+    profiles:
+      - static-mount
 
 networks:
   cms-network:

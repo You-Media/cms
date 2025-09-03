@@ -22,7 +22,7 @@ export const APP_ROUTES = {
     USERS: {
       LIST: '/dashboard/users',
       NEW: '/dashboard/users/new',
-      EDIT: (id: string | number) => `/dashboard/users/${id}`,
+      EDIT: (id: string | number) => `/dashboard/users/edit?id=${id}`,
     },
     CATEGORIES: {
       LIST: '/dashboard/categories',
@@ -34,12 +34,12 @@ export const APP_ROUTES = {
     ARTICLES: {
       LIST: '/dashboard/articles',
       NEW: '/dashboard/articles/new',
-      EDIT: (id: string | number) => `/dashboard/articles/${id}`,
+      EDIT: (id: string | number) => `/dashboard/articles/edit?id=${id}`,
     },
     BANNERS: {
       LIST: '/dashboard/banners',
       NEW: '/dashboard/banners/new',
-    EDIT: (id: string | number) => `/dashboard/banners/${id}`,
+    EDIT: (id: string | number) => `/dashboard/banners/edit?id=${id}`,
     },
   },
 } as const

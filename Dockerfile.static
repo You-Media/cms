@@ -1,0 +1,54 @@
+# Multi-stage build: build Next.js static export, then serve with Apache
+
+# 1) Dependencies: cache npm install separately
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps --only=production
+
+# 2) Builder: produce 'out/' with static export
+FROM node:20-bookworm-slim AS builder
+WORKDIR /app
+
+# Install brotli for precompression
+RUN apt-get update && apt-get install -y --no-install-recommends brotli && rm -rf /var/lib/apt/lists/*
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* ./
+
+# Copy source code
+COPY . .
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+# Optional: keep this in case Tailwind/Next tries to use lightningcss
+ENV NEXT_DISABLE_LIGHTNINGCSS=1
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
+# Next build will output to /app/out thanks to next.config.ts (output: 'export')
+RUN npm run build
+
+# Optional: remove Next.js prerender .txt snapshots to reduce image size
+RUN find out -type f -name "*.txt" -delete || true
+
+# Precompress assets with Brotli and Gzip (keep originals)
+# Files: js, css, html, json, svg
+RUN find out -type f \( -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json" -o -name "*.svg" \) -exec brotli -f -q 11 -k {} \; -exec sh -c 'gzip -9 -c "$1" > "$1.gz"' _ {} \;
+
+# 3) Runtime: Apache httpd serving static files
+FROM httpd:2.4-alpine AS runtime
+
+# Copy optimized Apache configuration
+COPY apache.conf /usr/local/apache2/conf/httpd.conf
+
+# Copy exported static site
+COPY --from=builder /app/out/ /usr/local/apache2/htdocs/
+
+# Default Apache listens on :80. We'll map host 3000 -> container 80 in docker-compose.
+EXPOSE 80
+
+CMD ["httpd-foreground"]
+
+
