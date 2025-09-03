@@ -37,7 +37,8 @@
     "react-easy-crop": "^5.0.5",
     "@tiptap/react": "^2.6.6",
     "@tiptap/starter-kit": "^2.6.6",
-    "@tiptap/extension-text-style": "^2.6.6"
+    "@tiptap/extension-text-style": "^2.6.6",
+    "yoastseo": "^20.12.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
