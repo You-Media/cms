@@ -146,7 +146,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Scrivi 
   useEffect(() => {
     if (!editor) return
     const current = editor.getHTML()
-    if ((value || '') !== current) editor.commands.setContent(value || '', { emitUpdate: false })
+    if ((value || '') !== current) (editor.commands.setContent as any)(value || '', { emitUpdate: false })
+
   }, [value, editor])
 
   const isReady = useMemo(() => Boolean(editor), [editor])
