@@ -2,9 +2,11 @@
   RewriteEngine On
   RewriteBase /
 
-  # Serve existing files and directories as-is
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
+  # Serve _next assets directly (critical for Next.js)
+  RewriteRule ^_next/ - [L]
+
+  # Serve existing files as-is
+  RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
   # Route everything else to index.html for SPA routing
