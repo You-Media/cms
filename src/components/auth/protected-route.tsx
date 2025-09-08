@@ -14,9 +14,6 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const pathname = usePathname()
   const { token, isLoading } = useAuth()
 
-  // Debug render
-  console.log('[ProtectedRoute] render', { pathname, hasToken: Boolean(token), isLoading })
-
   // Leggi eventuale token persistito per evitare redirect prematuri prima dell'hydration
   const hasPersistedToken = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -35,7 +32,6 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
   // Mostra loading mentre lo stato si sta idratando
   if (isLoading) {
-    console.log('[ProtectedRoute] loading', { pathname })
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
@@ -50,12 +46,10 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   if (!token) {
     // Durante static export, renderizza sempre i children per evitare redirect hardcoded
     if (isStaticExport) {
-      console.log('[ProtectedRoute] static export mode -> render children', { pathname })
       return <>{children}</>
     }
     
     if (hasPersistedToken) {
-      console.log('[ProtectedRoute] fallback suppressed (persisted token) -> show loading', { pathname })
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center space-x-3">
@@ -65,7 +59,6 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
         </div>
       )
     }
-    console.log('[ProtectedRoute] fallback (no token)', { pathname })
     return fallback || (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -80,6 +73,5 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     )
   }
 
-  console.log('[ProtectedRoute] render children', { pathname })
   return <>{children}</>
 }

@@ -35,7 +35,7 @@ export default function HomePage() {
   }, [mounted, token, isLoading, router, hasRedirected])
   
   // Durante il caricamento o prima del mount, mostra loading
-  if (!mounted || isLoading) {
+  if (!mounted || isLoading || hasRedirected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
@@ -48,13 +48,13 @@ export default function HomePage() {
     )
   }
   
-  // Se siamo qui, significa che stiamo per fare redirect
+  // Questo non dovrebbe mai essere raggiunto, ma per sicurezza
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="flex items-center space-x-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
         <span className="text-gray-700 dark:text-gray-300">
-          Reindirizzamento...
+          Caricamento...
         </span>
       </div>
     </div>
