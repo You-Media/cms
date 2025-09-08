@@ -132,16 +132,12 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
           // Imposta login completato per evitare controlli sul token temporaneo
           setLoginCompleted(true)
           
-          // Toast di successo
+          // Toast di successo e redirect immediato alla dashboard
           toast.success('Login completato', {
             description: 'Accesso effettuato con successo!',
-            duration: 3000,
+            duration: 1500,
           })
-          
-          // Aspetta un momento per permettere a Zustand di persistere lo stato
-          setTimeout(() => {
-            router.push(APP_ROUTES.DASHBOARD.HOME)
-          }, 100)
+          router.replace(APP_ROUTES.DASHBOARD.HOME)
       
     } catch (error) {
       // Se l'errore è relativo al token scaduto, puliscilo e torna al login

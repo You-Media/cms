@@ -1,6 +1,13 @@
-import { redirect } from 'next/navigation'
+"use client"
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { APP_ROUTES } from '@/config/routes'
 
 export default function HomePage() {
-  redirect(APP_ROUTES.AUTH.LOGIN)
+  const router = useRouter()
+  useEffect(() => {
+    router.replace(APP_ROUTES.AUTH.LOGIN)
+  }, [router])
+  return null
 }
