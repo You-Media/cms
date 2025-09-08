@@ -12,7 +12,7 @@ class ApiClient {
   private onAuthFailureCallback: (() => void) | null = null;
 
   constructor(baseURL?: string) {
-    this.baseURL = baseURL || API_ENDPOINTS.BASE_URL;
+    this.baseURL = baseURL || API_ENDPOINTS.BASE_URL || '';
   }
 
   private async request<T>(
