@@ -119,6 +119,12 @@ RewriteEngine On
   RewriteRule . /index.html [L]
 </IfModule>
 
+# Content Security Policy: allow API calls to staging domain
+<IfModule mod_headers.c>
+  Header unset Content-Security-Policy
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://staging.editoriaresponsabile.com https://*.editoriaresponsabile.com; base-uri 'self'; form-action 'self'"
+</IfModule>
+
 # Force HTTPS (uncomment if you want to force HTTPS)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
