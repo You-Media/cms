@@ -145,7 +145,7 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
         duration: 1500,
       })
       // Redirect disabilitato temporaneamente per debug errori post-OTP
-      router.replace(APP_ROUTES.DASHBOARD.HOME)
+      //router.replace(APP_ROUTES.DASHBOARD.HOME)
       
     } catch (error) {
       // Se l'errore è relativo al token scaduto, puliscilo e torna al login
