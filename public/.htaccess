@@ -1,27 +1,12 @@
-RewriteEngine On
-RewriteBase /
-Options -MultiViews
-DirectorySlash Off
-
-# Single Page App rewrites for Next.js static export
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteBase /
 
-  # 1) Serve existing files (includes _next assets)
-  RewriteCond %{REQUEST_FILENAME} -f
+  # Serve existing files and directories as-is
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # 2) Try route.html
-  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}.html -f
-  RewriteRule ^(.+)$ $1.html [L]
-
-  # 3) Try route/index.html
-  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html -f
-  RewriteRule ^(.+)$ $1/index.html [L]
-
-  # 4) Fallback to root index.html (SPA)
-  RewriteRule ^ /index.html [L]
+  # Route everything else to index.html for SPA routing
+  RewriteRule ^ index.html [L]
 </IfModule>
-
-# Handle 404 via SPA
-ErrorDocument 404 /index.html
