@@ -3,6 +3,8 @@
 
 # Enable URL rewriting
 RewriteEngine On
+Options -MultiViews
+DirectorySlash Off
 
 # Security Headers
 <IfModule mod_headers.c>
