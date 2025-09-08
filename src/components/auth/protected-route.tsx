@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { useEffect, useMemo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { APP_ROUTES } from '@/config/routes'
 
@@ -11,7 +11,6 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const router = useRouter()
   const pathname = usePathname()
   const { token, isLoading } = useAuth()
 
@@ -31,23 +30,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
   }, [])
 
-  useEffect(() => {
-    // Aspetta che lo stato sia completamente idratato prima di controllare l'autenticazione
-    if (!isLoading) {
-      console.log('[ProtectedRoute] effect', { pathname, hasToken: Boolean(token), isLoading })
-      if (!token) {
-        if (hasPersistedToken) {
-          console.log('[ProtectedRoute] missing token but persisted token exists -> wait hydration', { pathname })
-          return
-        }
-        console.warn('[ProtectedRoute] missing token -> redirect to /403 for debugging', { pathname })
-        router.replace('/403')
-        return
-      } else {
-        console.log('[ProtectedRoute] token present -> allow', { pathname })
-      }
-    }
-  }, [token, isLoading, router, pathname, hasPersistedToken])
+  // Nessun redirect side-effect: gestiamo tutto via render per evitare loop in export statico
 
   // Mostra loading mentre lo stato si sta idratando
   if (isLoading) {
