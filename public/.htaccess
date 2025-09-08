@@ -102,9 +102,8 @@ RewriteEngine On
   RewriteEngine On
   RewriteBase /
 
-  # Serve existing files/directories
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
+  # Serve existing files only (not directories)
+  RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
   # If a corresponding .html exists, serve it

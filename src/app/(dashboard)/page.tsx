@@ -1,6 +1,13 @@
-import { redirect } from 'next/navigation'
+"use client"
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { APP_ROUTES } from '@/config/routes'
 
 export default function DashboardRedirect() {
-  redirect(APP_ROUTES.DASHBOARD.HOME)
+  const router = useRouter()
+  useEffect(() => {
+    router.replace(APP_ROUTES.DASHBOARD.HOME)
+  }, [router])
+  return null
 }
