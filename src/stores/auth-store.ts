@@ -300,16 +300,8 @@ export const useAuthStore = create<AuthStore>()(
             if (user) set({ user });
           } catch (error) {
             // Se fallisce con 401, verrà gestito dal client API (refresh -> logout)
-            // Per errori 5xx su /me, mostra toast (già gestito globalmente) e reindirizza al login
-            // Considera anche errori di rete/CORS (status 0)
-            if (error instanceof ApiError && (error.status >= 500 || error.status === 0)) {
-              if (typeof window !== 'undefined') {
-                try {
-                  sessionStorage.setItem('redirect_reason', 'SERVER_ERROR');
-                } catch {}
-                window.location.href = APP_ROUTES.AUTH.LOGIN;
-              }
-            }
+            // Per errori 5xx o di rete, non forzare redirect: resta nella pagina e lascia i toast globali informare l'utente
+            // Questo evita loop di redirect in export statico
           } finally {
             inflightFetchMePromise = null;
           }
