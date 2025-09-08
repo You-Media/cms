@@ -97,31 +97,30 @@ RewriteEngine On
     </FilesMatch>
 </IfModule>
 
-# Next.js specific rewrites
-# Handle Next.js static files
-RewriteRule ^_next/static/(.*)$ /_next/static/$1 [L]
+# Next.js specific rewrites (serve from exported "out" directory)
+# Serve Next.js assets from out/_next to avoid rewriting to HTML
+RewriteRule ^_next/(.*)$ /out/_next/$1 [L]
 
-# Handle Next.js image optimization
-RewriteRule ^_next/image(.*)$ /_next/image$1 [L]
+# Handle Next.js pages and app router from the exported "out" directory
+# If the request is for a real file or directory in docroot, serve it
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
 
-# Handle API routes
-RewriteRule ^api/(.*)$ /api/$1 [L]
+# If a corresponding file exists under out/, serve it
+RewriteCond %{DOCUMENT_ROOT}/out%{REQUEST_URI} -f
+RewriteRule ^(.*)$ /out/$1 [L]
 
-# Handle Next.js pages and app router
-# If the request is for a file or directory that exists, serve it
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# If a corresponding .html exists under out/, serve it
+RewriteCond %{DOCUMENT_ROOT}/out%{REQUEST_URI}.html -f
+RewriteRule ^(.*)$ /out/$1.html [L]
 
-# If a corresponding .html exists (from static export), serve it
-RewriteCond %{REQUEST_FILENAME}.html -f
-RewriteRule ^(.+)$ $1.html [L]
+# If a corresponding /index.html exists under out/, serve it
+RewriteCond %{DOCUMENT_ROOT}/out%{REQUEST_URI}/index.html -f
+RewriteRule ^(.*)$ /out/$1/index.html [L]
 
-# If a corresponding /index.html exists (for directory-style routes), serve it
-RewriteCond %{REQUEST_FILENAME}/index.html -f
-RewriteRule ^(.+)$ $1/index.html [L]
-
-# Redirect all other requests to Next.js
-RewriteRule ^(.*)$ /index.html [L]
+# Redirect all other requests to exported root index.html
+RewriteRule ^(.*)$ /out/index.html [L]
 
 # Force HTTPS (uncomment if you want to force HTTPS)
 # RewriteCond %{HTTPS} off
