@@ -30,7 +30,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
   }, [])
 
-  // Nessun redirect side-effect: gestiamo tutto via render per evitare loop in export statico
+  // Durante static export (typeof window === 'undefined'), non fare mai redirect
+  const isStaticExport = typeof window === 'undefined'
 
   // Mostra loading mentre lo stato si sta idratando
   if (isLoading) {
@@ -45,8 +46,14 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     )
   }
 
-  // Se non c'è utente o token dopo l'idratazione, mostra fallback
+  // Se non c'è token dopo l'idratazione
   if (!token) {
+    // Durante static export, renderizza sempre i children per evitare redirect hardcoded
+    if (isStaticExport) {
+      console.log('[ProtectedRoute] static export mode -> render children', { pathname })
+      return <>{children}</>
+    }
+    
     if (hasPersistedToken) {
       console.log('[ProtectedRoute] fallback suppressed (persisted token) -> show loading', { pathname })
       return (
