@@ -12,16 +12,16 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const router = useRouter()
-  const { user, token, isLoading } = useAuth()
+  const { token, isLoading } = useAuth()
 
   useEffect(() => {
     // Aspetta che lo stato sia completamente idratato prima di controllare l'autenticazione
     if (!isLoading) {
-      if (!user || !token) {
+      if (!token) {
         router.push(APP_ROUTES.AUTH.LOGIN)
       }
     }
-  }, [user, token, isLoading, router])
+  }, [token, isLoading, router])
 
   // Mostra loading mentre lo stato si sta idratando
   if (isLoading) {
@@ -36,7 +36,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   }
 
   // Se non c'è utente o token dopo l'idratazione, mostra fallback
-  if (!user || !token) {
+  if (!token) {
     return fallback || (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
