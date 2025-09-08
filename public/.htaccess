@@ -2,11 +2,18 @@
   RewriteEngine On
   RewriteBase /
 
-  # Serve _next assets directly (critical for Next.js)
+  # Serve _next assets directly (critical for Next.js static export)
   RewriteRule ^_next/ - [L]
+  
+  # Serve static assets directly (images, fonts, etc.)
+  RewriteRule ^(.*\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))$ - [L]
+  
+  # Serve JSON data files directly
+  RewriteRule ^(.*\.json)$ - [L]
 
-  # Serve existing files as-is
-  RewriteCond %{REQUEST_FILENAME} -f
+  # Serve existing files and directories as-is
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
   # Route everything else to index.html for SPA routing
