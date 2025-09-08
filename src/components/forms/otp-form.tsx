@@ -127,17 +127,24 @@ export function OtpForm({ otpData, onBack }: OtpFormProps) {
         return
       }
       
-                const result = await verifyOtp(data.otp)
-          
-          // Imposta login completato per evitare controlli sul token temporaneo
-          setLoginCompleted(true)
-          
-          // Toast di successo e redirect immediato alla dashboard
-          toast.success('Login completato', {
-            description: 'Accesso effettuato con successo!',
-            duration: 1500,
-          })
-          router.replace(APP_ROUTES.DASHBOARD.HOME)
+      const result = await verifyOtp(data.otp)
+
+      // Verifica robusta: assicurati che lo store abbia token e user, altrimenti mostra errore generico
+      const { user, token } = useAuthStore.getState()
+      if (!result || !result.token || !user || !token) {
+        setVerifyError('Verifica OTP non riuscita. Riprova tra qualche secondo.')
+        return
+      }
+
+      // Imposta login completato per evitare controlli sul token temporaneo
+      setLoginCompleted(true)
+
+      // Toast di successo e redirect immediato alla dashboard
+      toast.success('Login completato', {
+        description: 'Accesso effettuato con successo!',
+        duration: 1500,
+      })
+      router.replace(APP_ROUTES.DASHBOARD.HOME)
       
     } catch (error) {
       // Se l'errore è relativo al token scaduto, puliscilo e torna al login
