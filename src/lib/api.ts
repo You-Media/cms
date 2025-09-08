@@ -213,11 +213,8 @@ class ApiClient {
       }
       return false;
     } catch (error) {
-      // Fallimento refresh: pulisci token e notifica
-      this.clearToken();
-      if (this.onAuthFailureCallback) {
-        this.onAuthFailureCallback();
-      }
+      // Fallimento refresh: NON pulire il token né fare logout automatico.
+      // In export statico questo causava redirect immediati al login.
       return false;
     } finally {
       this.isRefreshing = false;
