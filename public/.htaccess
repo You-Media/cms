@@ -8,6 +8,8 @@ DirectorySlash Off
 
 # Security Headers
 <IfModule mod_headers.c>
+    # Debug header to verify that this .htaccess is active in production
+    Header always set X-HTACCESS "on"
     # Prevent clickjacking
     Header always append X-Frame-Options SAMEORIGIN
     
@@ -104,6 +106,9 @@ DirectorySlash Off
   RewriteEngine On
   Options -MultiViews
   DirectorySlash Off
+
+  # Explicit test: force /dashboard to /dashboard.html (helps diagnose rewrite chain)
+  RewriteRule ^dashboard/?$ /dashboard.html [L]
 
   # serve existing files
   RewriteCond %{REQUEST_FILENAME} -f
