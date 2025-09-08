@@ -5,7 +5,7 @@
 
 export const API_ENDPOINTS = {
   // Base URL - configurato tramite variabile d'ambiente
-  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1',
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
 
   // Authentication endpoints (utilizzati)
   AUTH: {
