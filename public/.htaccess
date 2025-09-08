@@ -9,6 +9,14 @@
   RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
-  # Route everything else to index.html for SPA routing
+  # Try to serve the corresponding .html file
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.+)$ $1.html [L]
+
+  # Try to serve route/index.html for directory-style routes
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+)$ $1/index.html [L]
+
+  # Fallback to index.html for SPA routing
   RewriteRule ^ index.html [L]
 </IfModule>
