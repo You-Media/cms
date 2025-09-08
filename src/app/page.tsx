@@ -9,6 +9,7 @@ export default function HomePage() {
   const router = useRouter()
   const { token, isLoading } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const [hasRedirected, setHasRedirected] = useState(false)
   
   // Evita hydration mismatch per esportazione statica
   useEffect(() => {
@@ -17,19 +18,21 @@ export default function HomePage() {
   
   // Redirect logic solo dopo mount per evitare problemi con static export
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || hasRedirected) return
     
     // Se l'utente è autenticato, vai alla dashboard
     if (token) {
+      setHasRedirected(true)
       router.replace(APP_ROUTES.DASHBOARD.HOME)
       return
     }
     
     // Se non è in loading e non è autenticato, vai al login
     if (!isLoading) {
+      setHasRedirected(true)
       router.replace(APP_ROUTES.AUTH.LOGIN)
     }
-  }, [mounted, token, isLoading, router])
+  }, [mounted, token, isLoading, router, hasRedirected])
   
   // Durante il caricamento o prima del mount, mostra loading
   if (!mounted || isLoading) {
