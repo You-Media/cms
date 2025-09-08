@@ -9,7 +9,7 @@ export const APP_ROUTES = {
   
   // Authentication routes (utilizzate)
   AUTH: {
-    LOGIN: '/login',
+    LOGIN: '/',
     FORGOT_PASSWORD: '/forgot-password',
     RESET_PASSWORD: '/reset-password',
   },
