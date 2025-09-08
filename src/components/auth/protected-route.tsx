@@ -40,7 +40,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
           console.log('[ProtectedRoute] missing token but persisted token exists -> wait hydration', { pathname })
           return
         }
-        console.warn('[ProtectedRoute] missing token -> show fallback, no redirect (debug)', { pathname })
+        console.warn('[ProtectedRoute] missing token -> redirect to /403 for debugging', { pathname })
+        router.replace('/403')
         return
       } else {
         console.log('[ProtectedRoute] token present -> allow', { pathname })
