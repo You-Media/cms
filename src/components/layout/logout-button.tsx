@@ -23,8 +23,8 @@ export function LogoutButton({ variant = 'default' }: LogoutButtonProps) {
         description: 'Sei stato disconnesso con successo.',
         duration: 2000,
       })
-      // Redirect diretto al login, non alla homepage per evitare loop
-      router.replace(APP_ROUTES.AUTH.LOGIN)
+      // Redirect alla homepage che ora mostra direttamente il login
+      router.replace(APP_ROUTES.HOME)
     } catch (error) {
       toast.error('Errore durante il logout', {
         description: 'Si è verificato un errore durante la disconnessione.',
