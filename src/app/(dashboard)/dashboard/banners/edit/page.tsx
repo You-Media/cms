@@ -1,19 +1,24 @@
 'use client'
 
-import { redirect, useParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import NewBannerPage from '../new/page'
 import { useAuth } from '@/hooks/use-auth'
 
 export default function EditBannerPage() {
   const { hasPermission } = useAuth()
-  const params = useParams() as { id?: string }
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id')
+  const router = useRouter()
 
-  // Se manca id, torna alla lista
-  if (!params?.id) {
-    redirect('/dashboard/banners')
-  }
+  useEffect(() => {
+    if (!id) {
+      router.replace('/dashboard/banners')
+    }
+  }, [id, router])
 
-  // Permessi: per coerenza, richiediamo almeno edit_banner
+  if (!id) return null
+
   if (!hasPermission('edit_banner')) {
     return (
       <div className="p-6">
@@ -23,7 +28,6 @@ export default function EditBannerPage() {
     )
   }
 
-  // Temporaneamente riutilizziamo il form di creazione anche in edit
   return <NewBannerPage />
 }
 

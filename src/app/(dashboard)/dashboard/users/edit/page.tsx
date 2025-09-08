@@ -10,14 +10,13 @@ import { ApiError } from '@/lib/api'
 import ImageCropperModal from '@/components/forms/image-cropper-modal'
 import { toast } from 'sonner'
 import { fetchUserDetail, updateUser, invalidateUserDetailCache } from '@/hooks/use-users'
-import { useParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 export default function EditUserPage() {
-  const params = useParams<{ id: string }>()
-  const userId = params.id
+  const searchParams = useSearchParams()
+  const userId = searchParams.get('id') as string | null
   const { hasPermission, hasAnyRole, isSuperAdmin } = useAuth()
   
-  // Mappatura nomi ruoli in italiano
   const roleLabelIt = (role: string): string => {
     switch (role) {
       case 'EditorInChief':
@@ -45,7 +44,6 @@ export default function EditUserPage() {
     return Array.from(set)
   })()
 
-  // React hooks must be called before any conditional returns
   const [submitting, setSubmitting] = useState(false)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -62,15 +60,11 @@ export default function EditUserPage() {
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string[] }>({})
   const [removePhoto, setRemovePhoto] = useState(false)
   const isDefaultPhoto = (photoPreview && photoPreview.includes('images/default-propic.png')) || false
-  // Snapshot per confronto
   const [origFirstName, setOrigFirstName] = useState('')
   const [origLastName, setOrigLastName] = useState('')
   const [origEmail, setOrigEmail] = useState('')
   const [origRoles, setOrigRoles] = useState<string[]>([])
-
-  // Evita doppio fetch in StrictMode
   const hasLoadedRef = useRef(false)
-  // Errori aggregati per ruoli (roles e roles.*)
   const roleErrorMessages: string[] = [
     ...(fieldErrors.roles || []),
     ...Object.entries(fieldErrors)
@@ -80,7 +74,7 @@ export default function EditUserPage() {
   useEffect(() => {
     let aborted = false
     async function load() {
-      if (hasLoadedRef.current) return
+      if (hasLoadedRef.current || !userId) return
       try {
         const res = await fetchUserDetail(userId)
         const data = (res as any).data || res
@@ -105,6 +99,8 @@ export default function EditUserPage() {
     void load()
     return () => { aborted = true }
   }, [userId])
+
+  if (!userId) return null
 
   if (!canEdit) {
     return (
@@ -142,7 +138,6 @@ export default function EditUserPage() {
             const lastTrim = trim(lastName)
             const emailTrim = trim(email)
 
-            // Client-side required guards only when the field is being changed
             const clientErrors: Record<string, string[]> = {}
             if (firstTrim !== trim(origFirstName) && firstTrim === '') clientErrors.first_name = ['Il nome è obbligatorio']
             if (lastTrim !== trim(origLastName) && lastTrim === '') clientErrors.last_name = ['Il cognome è obbligatorio']
@@ -167,16 +162,12 @@ export default function EditUserPage() {
             if (rolesChanged) payload.roles = roles
             if (photo) payload.profile_photo = photo
             if (!photo && removePhoto) payload.remove_profile_photo = true
-            await updateUser(userId, payload)
+            await updateUser(userId!, payload)
             toast.success('Utente aggiornato')
-            
-            // Invalidate cache and reset hasLoadedRef to force fresh data on next visit
-            invalidateUserDetailCache(userId)
+            invalidateUserDetailCache(userId!)
             hasLoadedRef.current = false
-            
-            // Reload data immediately to show updated information
             try {
-              const res = await fetchUserDetail(userId)
+              const res = await fetchUserDetail(userId!)
               const data = (res as any).data || res
               if (data) {
                 const fn = data?.profile?.first_name || ''
@@ -195,9 +186,7 @@ export default function EditUserPage() {
                 if (avatar) setPhotoPreview(avatar)
                 hasLoadedRef.current = true
               }
-            } catch (error) {
-              console.error('Failed to reload user data:', error)
-            }
+            } catch (error) {}
           } catch (e) {
             if (e instanceof ApiError && e.status === 422 && (e as any).errors) {
               setFieldErrors((e as any).errors as Record<string, string[]>)

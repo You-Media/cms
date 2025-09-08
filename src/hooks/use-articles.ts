@@ -100,8 +100,8 @@ export async function fetchUltimissimiArticles(limit: number = 10): Promise<{ st
 }
 
 export async function updateArticle(id: number | string, payload: Partial<Article>): Promise<{ status?: string; message?: string }> {
-  // Usa POST come nel form di modifica articoli, per compatibilità con backend
-  return api.post<any>(API_ENDPOINTS.ARTICLES.UPDATE(id), payload, undefined, { suppressGlobalToasts: true })
+  // Usa PATCH per aggiornamenti parziali, come richiesto dal backend
+  return api.patch<any>(API_ENDPOINTS.ARTICLES.UPDATE(id), payload, undefined, { suppressGlobalToasts: true })
 }
 
 

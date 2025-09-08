@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { Label } from '@/components/ui/label'
@@ -74,8 +74,8 @@ type InitialSnapshot = {
 }
 
 export default function EditArticlePageImpl() {
-  const params = useParams() as { id?: string }
-  const id = params?.id
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id') || undefined
   const router = useRouter()
   const { selectedSite, hasAnyRole, hasPermission, hasAnyRole: hasAnyRoleFn, user } = useAuth()
   const allowedRoles = ['JOURNALIST', 'EDITOR_IN_CHIEF', 'PUBLISHER']
@@ -570,7 +570,6 @@ export default function EditArticlePageImpl() {
     if (!files || files.length === 0) return
     const next: File[] = []
     const nextPrev: string[] = []
-    // captions removed
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
       if (f.size > 5 * 1024 * 1024) {
@@ -579,7 +578,6 @@ export default function EditArticlePageImpl() {
       }
       next.push(f)
       nextPrev.push(URL.createObjectURL(f))
-      // captions removed
     }
     setGalleryFiles((prev) => [...prev, ...next])
     setGalleryPreviews((prev) => [...prev, ...nextPrev])
@@ -604,7 +602,6 @@ export default function EditArticlePageImpl() {
   const handleCoverDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
     const files = e.dataTransfer.files
     if (files.length > 0) {
       const file = files[0]
@@ -625,7 +622,6 @@ export default function EditArticlePageImpl() {
   const handleGalleryDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
     const files = e.dataTransfer.files
     if (files.length > 0) {
       const imageFiles: File[] = []
@@ -635,9 +631,7 @@ export default function EditArticlePageImpl() {
           imageFiles.push(file)
         }
       }
-      
       if (imageFiles.length > 0) {
-        // Convert File[] to FileList-like object
         const fileList = {
           length: imageFiles.length,
           item: (index: number) => imageFiles[index],
@@ -647,7 +641,6 @@ export default function EditArticlePageImpl() {
             }
           }
         } as FileList
-        
         onGallerySelected(fileList)
       } else {
         toast.error('Seleziona solo file immagine')
@@ -680,22 +673,12 @@ export default function EditArticlePageImpl() {
     return true
   }
 
-  function arraysEqual(a: number[], b: number[]) {
-    if (a.length !== b.length) return false
-    const sa = [...a].sort((x, y) => x - y)
-    const sb = [...b].sort((x, y) => x - y)
-    for (let i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false
-    return true
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
-
     const initial = initialRef.current
     const formData = new FormData()
     formData.append('_method', 'PATCH')
-
     const changed: string[] = []
     const appendIfChanged = (key: string, newVal: any, oldVal: any) => {
       const n = newVal
@@ -742,7 +725,6 @@ export default function EditArticlePageImpl() {
       }
       appendIfChanged('is_searchable', isSearchable, initial.is_searchable)
       if (authorId !== '' || initial.author_id !== '') appendIfChanged('author_id', authorId === '' ? '' : String(authorId), initial.author_id === '' ? '' : String(initial.author_id))
-      // Arrays: invia solo differenze (aggiunte e rimozioni)
       const addedCats = categoryIds.filter((idNum) => !initial.category_ids.includes(idNum))
       const removedCats = initial.category_ids.filter((idNum) => !categoryIds.includes(idNum))
       if (addedCats.length > 0) {
@@ -765,28 +747,23 @@ export default function EditArticlePageImpl() {
         changed.push('tag_ids_to_remove[]')
       }
     } else {
-      // Safety fallback: send minimal required
       formData.append('title', title)
       formData.append('content', content)
     }
 
-    // Cover handling
     if (coverFile) {
       formData.append('cover', coverFile)
       changed.push('cover')
     } else if (removeCover) {
-      // Il backend richiede true/false booleano
       formData.append('remove_cover', '1')
       changed.push('remove_cover')
     }
 
-    // Gallery new files
     if (galleryFiles.length > 0) {
       galleryFiles.forEach((f) => formData.append('gallery[]', f))
       changed.push('gallery[]')
     }
 
-    // Gallery removals (existing ids) — append same key multiple times
     if (galleryToRemove.length > 0) {
       galleryToRemove.forEach((gid) => formData.append('gallery_to_remove[]', String(gid)))
       changed.push('gallery_to_remove[]')
@@ -799,9 +776,8 @@ export default function EditArticlePageImpl() {
 
     setSubmitting(true)
     try {
-      await api.post(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
+      await api.patch(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
       toast.success('Articolo aggiornato con successo')
-      // Rimani sulla stessa pagina: ricarica i dettagli per aggiornare lo snapshot
       try {
         const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(String(id)))
         const d = (res as any)?.data || res
@@ -1074,7 +1050,6 @@ export default function EditArticlePageImpl() {
                     className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-600 file:text-white dark:file:bg-amber-600 dark:file:text-white"
                   />
                   <p className="text-xs text-gray-500">Max 5MB per file</p>
-                  {/* captions removed */}
                   <div className="space-y-2 mt-2">
                     <Label>Video URL</Label>
                     <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://..." maxLength={2048} />
@@ -1131,7 +1106,6 @@ export default function EditArticlePageImpl() {
                 <div className="text-xs text-gray-500">Meta</div>
               </div>
               <div className="space-y-4">
-                {/* Focus keyphrase removed */}
                 <div className="space-y-2">
                   <Label htmlFor="meta_title">Meta title</Label>
                   <Input id="meta_title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={255} placeholder="Titolo SEO" />

@@ -55,12 +55,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
               nextSlots[ord - 1] = c
             }
           })
-          // Fallback: if none placed, fill by array order
-          if (!nextSlots.some(Boolean)) {
-            for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-              nextSlots[i] = arr[i]
-            }
-          }
+          // No fallback: slots are filled strictly by 'order' value; others remain empty
           setSlots(nextSlots)
         }
       } finally {
@@ -118,11 +113,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
           nextSlots[ord - 1] = c
         }
       })
-      if (!nextSlots.some(Boolean)) {
-        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-          nextSlots[i] = arr[i]
-        }
-      }
+      // No fallback: slots are filled strictly by 'order' value; others remain empty
       setSlots(nextSlots)
       setSlotInputs((prev) => prev.map((v, i) => (i === slotIndex ? '' : v)))
     } catch {}
@@ -135,14 +126,33 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
   async function onSaveOrder() {
     const prev = ordered
     try {
-      for (let i = 0; i < slots.length; i++) {
-        const cat = slots[i]
-        if (!cat) continue
-        const desired = i + 1
-        const current = Number((cat as any).order) || 0
-        if (current !== desired) {
-          await setCategoryOrder(cat, desired)
+      // Conflict-free update without temporary high orders
+      const assigned = slots
+        .map((cat, i) => (cat ? { id: (cat as Category).id, cat: cat as Category, final: i + 1 } : null))
+        .filter(Boolean) as Array<{ id: number; cat: Category; final: number }>
+
+      // Current occupied orders (only >0)
+      const prevByOrder = new Map<number, Category>()
+      for (const c of prev) {
+        const cur = Number((c as any).order) || 0
+        if (cur > 0) prevByOrder.set(cur, c)
+      }
+
+      // Desired target orders
+      const desiredByOrder = new Map<number, Category>()
+      for (const a of assigned) desiredByOrder.set(a.final, a.cat)
+
+      // Phase 1: clear conflicts (free slots that will be reassigned or left empty)
+      for (const [ord, cat] of prevByOrder) {
+        const desiredCat = desiredByOrder.get(ord)
+        if (!desiredCat || desiredCat.id !== cat.id) {
+          await setCategoryOrder(cat, 0)
         }
+      }
+
+      // Phase 2: set final target orders
+      for (const a of assigned) {
+        await setCategoryOrder(a.cat, a.final)
       }
       // refresh
       const res = await fetchOrderedCategories()
@@ -164,11 +174,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
           nextSlots[ord - 1] = c
         }
       })
-      if (!nextSlots.some(Boolean)) {
-        for (let i = 0; i < Math.min(arr.length, MAX_SLOTS); i++) {
-          nextSlots[i] = arr[i]
-        }
-      }
+      // No fallback: slots are filled strictly by 'order' value; others remain empty
       setSlots(nextSlots)
       setOrderDirty(false)
       toast.success('Ordine aggiornato')
@@ -201,12 +207,22 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
               draggable
               onDragStart={() => c && setDraggingIndex(idx)}
               onDragOver={(e) => { e.preventDefault() }}
-              onDrop={() => {
-                if (draggingIndex!==null && draggingIndex!==idx && !slots[idx]) {
+              onDrop={(e) => {
+                e.preventDefault()
+                if (draggingIndex!==null && draggingIndex!==idx) {
                   setSlots((prev) => {
                     const arr = [...prev]
-                    arr[idx] = prev[draggingIndex]
-                    arr[draggingIndex] = null
+                    const dragged = prev[draggingIndex]
+                    const target = prev[idx]
+                    if (!target) {
+                      // Move into empty slot, leave gap at source
+                      arr[idx] = dragged || null
+                      arr[draggingIndex] = null
+                    } else {
+                      // Swap by default when target occupied
+                      arr[idx] = dragged || null
+                      arr[draggingIndex] = target || null
+                    }
                     return arr
                   })
                   setOrderDirty(true)
