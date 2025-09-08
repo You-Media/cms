@@ -97,26 +97,19 @@ RewriteEngine On
     </FilesMatch>
 </IfModule>
 
-# Next.js specific rewrites (DocumentRoot is already the exported "out" directory)
-# Serve assets under _next as-is
-RewriteRule ^_next/(.*)$ /_next/$1 [L]
+# SPA fallback: serve existing files, else index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
 
-# Handle Next.js pages and app router from the current DocumentRoot
-# If the request is for a real file or directory in docroot, serve it
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
+  # Serve existing files/directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
 
-# If a corresponding .html exists, serve it
-RewriteCond %{REQUEST_FILENAME}.html -f
-RewriteRule ^(.+)$ $1.html [L]
-
-# If a corresponding /index.html exists, serve it
-RewriteCond %{REQUEST_FILENAME}/index.html -f
-RewriteRule ^(.+)$ $1/index.html [L]
-
-# Redirect all other requests to root index.html
-RewriteRule ^(.*)$ /index.html [L]
+  # Everything else → index.html
+  RewriteRule . /index.html [L]
+</IfModule>
 
 # Force HTTPS (uncomment if you want to force HTTPS)
 # RewriteCond %{HTTPS} off

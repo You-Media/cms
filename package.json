@@ -11,7 +11,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "clean": "rm -rf .next node_modules/.cache",
-    "export": "next build"
+    "export": "next build",
+    "copy:htaccess": "mkdir -p out && cp public/.htaccess out/.htaccess",
+    "postexport": "npm run copy:htaccess"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.0",
