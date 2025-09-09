@@ -100,8 +100,15 @@ export async function fetchUltimissimiArticles(limit: number = 10): Promise<{ st
 }
 
 export async function updateArticle(id: number | string, payload: Partial<Article>): Promise<{ status?: string; message?: string }> {
-  // Usa PATCH per aggiornamenti parziali, come richiesto dal backend
-  return api.patch<any>(API_ENDPOINTS.ARTICLES.UPDATE(id), payload, undefined, { suppressGlobalToasts: true })
+  // Usa POST con _method=PATCH nel body per compatibilità backend
+  const form = new FormData()
+  form.append('_method', 'PATCH')
+  Object.entries(payload || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return
+    // Trasforma in stringa (FormData gestisce anche File/Blob, ma qui sono semplici campi)
+    form.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value))
+  })
+  return api.post<any>(API_ENDPOINTS.ARTICLES.UPDATE(id), form, undefined, { suppressGlobalToasts: true })
 }
 
 

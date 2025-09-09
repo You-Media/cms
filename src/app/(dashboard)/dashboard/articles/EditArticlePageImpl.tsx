@@ -776,7 +776,8 @@ export default function EditArticlePageImpl() {
 
     setSubmitting(true)
     try {
-      await api.patch(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
+      // Il backend richiede POST con _method=PATCH nel body
+      await api.post(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
       toast.success('Articolo aggiornato con successo')
       try {
         const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(String(id)))
