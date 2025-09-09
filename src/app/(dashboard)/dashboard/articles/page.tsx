@@ -26,6 +26,7 @@ import { useArticles } from '@/hooks/use-articles'
 // import { fetchCategoryTree } from '@/hooks/use-categories'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useItalyGeo } from '@/hooks/use-italy-geo'
+import { LoadingIndicator } from '@/components/ui/loading-indicator'
 
 export default function ArticlesPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
@@ -286,6 +287,7 @@ export default function ArticlesPage() {
 
   function RowActions({ article }: { article: Article }) {
     const [open, setOpen] = useState(false)
+    const [actionLoading, setActionLoading] = useState<null | string>(null)
     const menuRef = useRef<HTMLDivElement | null>(null)
     const { hasAnyRole } = useAuth()
     const isPublisher = hasAnyRole(['PUBLISHER'])
@@ -325,9 +327,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('revision')
                     await api.post(API_ENDPOINTS.ARTICLES.REVISION(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo messo in revisione')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -337,11 +341,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('revision')}`} />
-                Metti in revisione
+                {actionLoading === 'revision' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Metti in revisione'}
               </button>
             )}
 
@@ -350,9 +356,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('approve')
                     await api.post(API_ENDPOINTS.ARTICLES.APPROVE(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo approvato')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -362,11 +370,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('approved')}`} />
-                Approva
+                {actionLoading === 'approve' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Approva'}
               </button>
             )}
 
@@ -375,9 +385,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('reject')
                     await api.post(API_ENDPOINTS.ARTICLES.REJECT(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo rifiutato')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -387,11 +399,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('rejected')}`} />
-                Rifiuta
+                {actionLoading === 'reject' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Rifiuta'}
               </button>
             )}
 
@@ -400,9 +414,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('publish')
                     await api.post(API_ENDPOINTS.ARTICLES.PUBLISH(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo pubblicato')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -412,11 +428,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('published')}`} />
-                Pubblica
+                {actionLoading === 'publish' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Pubblica'}
               </button>
             )}
 
@@ -425,9 +443,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('unpublish')
                     await api.post(API_ENDPOINTS.ARTICLES.UNPUBLISH(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo depubblicato')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -437,11 +457,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('unpublished')}`} />
-                Depubblica
+                {actionLoading === 'unpublish' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Depubblica'}
               </button>
             )}
 
@@ -450,9 +472,11 @@ export default function ArticlesPage() {
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                disabled={!!actionLoading}
                 onClick={async () => {
                   setOpen(false)
                   try {
+                    setActionLoading('archive')
                     await api.post(API_ENDPOINTS.ARTICLES.ARCHIVE(article.id), {}, undefined, { suppressGlobalToasts: true })
                     toast.success('Articolo archiviato')
                     void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -462,11 +486,13 @@ export default function ArticlesPage() {
                     } else {
                       toast.error('Aggiornamento stato non riuscito')
                     }
+                  } finally {
+                    setActionLoading(null)
                   }
                 }}
               >
                 <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('archived')}`} />
-                Archivia
+                {actionLoading === 'archive' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Archivia'}
               </button>
             )}
 
@@ -474,9 +500,11 @@ export default function ArticlesPage() {
             <button
               type="button"
               className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              disabled={!!actionLoading}
               onClick={async () => {
                 setOpen(false)
                 try {
+                  setActionLoading('draft')
                   await api.post(API_ENDPOINTS.ARTICLES.DRAFT(article.id), {}, undefined, { suppressGlobalToasts: true })
                   toast.success('Articolo reso bozza')
                   void search({ page, per_page: perPage, sort_by: sortBy, sort_direction: sortDirection })
@@ -486,11 +514,13 @@ export default function ArticlesPage() {
                   } else {
                     toast.error('Aggiornamento stato non riuscito')
                   }
+                } finally {
+                  setActionLoading(null)
                 }
               }}
             >
               <span className={`inline-block w-2.5 h-2.5 rounded-full ${statusColorClass('draft')}`} />
-              Rendi Bozza
+              {actionLoading === 'draft' ? <LoadingIndicator size="xs" label="In corso..." /> : 'Rendi Bozza'}
             </button>
 
             {article.status === 'published' && article.show_link ? (
@@ -796,6 +826,8 @@ function UltimissimiArticlesManager() {
   const [slots, setSlots] = useState<Array<Article | null>>(Array(MAX_SLOTS).fill(null))
   const [slotInputs, setSlotInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''))
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [mutating, setMutating] = useState(false)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [orderDirty, setOrderDirty] = useState(false)
 
@@ -844,9 +876,12 @@ function UltimissimiArticlesManager() {
     setOrdered((list) => list.filter((a) => a.id !== article.id))
     setOrderDirty(true)
     try {
+      setMutating(true)
       await setArticleOrder(article, 0)
     } catch {
       setOrdered(prev)
+    } finally {
+      setMutating(false)
     }
   }
 
@@ -860,6 +895,7 @@ function UltimissimiArticlesManager() {
     }
     const desiredOrder = slotIndex + 1
     try {
+      setMutating(true)
       await updateArticle(idNum, { recent_order: desiredOrder })
       // refresh
       const res = await fetchUltimissimiArticles(10)
@@ -899,6 +935,8 @@ function UltimissimiArticlesManager() {
       } else {
         toast.error('Operazione non riuscita')
       }
+    } finally {
+      setMutating(false)
     }
   }
 
@@ -907,6 +945,7 @@ function UltimissimiArticlesManager() {
   async function onSaveOrder() {
     const prev = ordered
     try {
+      setSaving(true)
       // Conflict-free update without temporary high orders
       const assigned = slots
         .map((art, i) => (art ? { id: (art as Article).id, art: art as Article, final: i + 1 } : null))
@@ -961,6 +1000,8 @@ function UltimissimiArticlesManager() {
     } catch {
       setOrdered(prev)
       toast.error('Aggiornamento ordine non riuscito')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -972,12 +1013,14 @@ function UltimissimiArticlesManager() {
         <h3 className="text-base font-semibold">Articoli “Ultimissimi” (ordinati)</h3>
         {orderDirty && (
           <div className="flex items-center gap-2">
-            <Button type="button" onClick={onSaveOrder} disabled={loading} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">Salva ordine</Button>
+            <Button type="button" onClick={onSaveOrder} disabled={loading || saving || mutating} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">
+              {saving ? <LoadingIndicator size="xs" label="Salvataggio..." /> : 'Salva ordine'}
+            </Button>
           </div>
         )}
       </div>
       {loading ? (
-        <div className="text-sm text-gray-500">Caricamento...</div>
+        <LoadingIndicator label="Caricamento..." inline={false} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {slots.map((a, idx) => (
@@ -1019,7 +1062,9 @@ function UltimissimiArticlesManager() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-gray-500">#{a.id}</span>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => { void onRemove(a) }}>Rimuovi</Button>
+                    <Button type="button" variant="destructive" size="sm" disabled={mutating || saving} onClick={() => { void onRemove(a) }}>
+                      {mutating ? <LoadingIndicator size="xs" label="Rimozione..." /> : 'Rimuovi'}
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -1030,7 +1075,9 @@ function UltimissimiArticlesManager() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Input value={slotInputs[idx]} onChange={(e) => setSlotInputs((prev) => prev.map((v, i) => i===idx ? e.target.value : v))} placeholder="ID" className="w-20" />
-                    <Button type="button" size="sm" onClick={() => { void onAddAt(idx) }}>Aggiungi</Button>
+                    <Button type="button" size="sm" disabled={mutating || saving} onClick={() => { void onAddAt(idx) }}>
+                      {mutating ? <LoadingIndicator size="xs" label="Aggiunta..." /> : 'Aggiungi'}
+                    </Button>
                   </div>
                 </div>
               )}
