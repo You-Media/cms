@@ -14,6 +14,7 @@ import { PaginationBar } from '@/components/table/PaginationBar'
 import { DataTable, type DataTableColumn } from '@/components/table/DataTable'
 import { toast } from 'sonner'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
+import { LoadingIndicator } from '@/components/ui/loading-indicator'
 
 function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number }) {
   const { hasAnyRole } = useAuth()
@@ -23,6 +24,8 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
   const [slots, setSlots] = useState<Array<Category | null>>(Array(MAX_SLOTS).fill(null))
   const [slotInputs, setSlotInputs] = useState<string[]>(Array(MAX_SLOTS).fill(''))
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [mutating, setMutating] = useState(false)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   // Removed StrictMode guard: always fetch when isPublisher is true
 
@@ -76,9 +79,12 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
     setOrdered((list) => list.filter((c) => c.id !== cat.id))
     setOrderDirty(true)
     try {
+      setMutating(true)
       await setCategoryOrder(cat, 0)
     } catch {
       setOrdered(prev)
+    } finally {
+      setMutating(false)
     }
   }
 
@@ -92,6 +98,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
     }
     const desiredOrder = slotIndex + 1
     try {
+      setMutating(true)
       await updateCategory(idNum, { order: desiredOrder })
       // refresh
       const res = await fetchOrderedCategories()
@@ -116,7 +123,11 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
       // No fallback: slots are filled strictly by 'order' value; others remain empty
       setSlots(nextSlots)
       setSlotInputs((prev) => prev.map((v, i) => (i === slotIndex ? '' : v)))
-    } catch {}
+    } catch {
+      // errori gestiti globalmente
+    } finally {
+      setMutating(false)
+    }
   }
 
   // Drag & drop: consenti spostamento solo verso slot vuoti, senza shift degli altri
@@ -126,6 +137,7 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
   async function onSaveOrder() {
     const prev = ordered
     try {
+      setSaving(true)
       // Conflict-free update without temporary high orders
       const assigned = slots
         .map((cat, i) => (cat ? { id: (cat as Category).id, cat: cat as Category, final: i + 1 } : null))
@@ -181,6 +193,8 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
     } catch {
       setOrdered(prev)
       toast.error('Aggiornamento ordine non riuscito')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -192,12 +206,18 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
         <h3 className="text-base font-semibold">Categorie in home (ordinate)</h3>
         {orderDirty && (
           <div className="flex items-center gap-2">
-            <Button type="button" onClick={onSaveOrder} disabled={loading} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">Salva ordine</Button>
+            <Button type="button" onClick={onSaveOrder} disabled={loading || saving || mutating} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold">
+              {saving ? (
+                <span className="inline-flex items-center gap-2"><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Salvataggio...</span>
+              ) : (
+                'Salva ordine'
+              )}
+            </Button>
           </div>
         )}
       </div>
       {loading ? (
-        <div className="text-sm text-gray-500">Caricamento...</div>
+        <LoadingIndicator label="Caricamento..." inline={false} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {slots.map((c, idx) => (
@@ -239,7 +259,9 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-gray-500">#{c.id}</span>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => { void onRemove(c) }}>Rimuovi</Button>
+                    <Button type="button" variant="destructive" size="sm" disabled={mutating || saving} onClick={() => { void onRemove(c) }}>
+                      {mutating ? <LoadingIndicator size="xs" label="Rimozione..." /> : 'Rimuovi'}
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -250,7 +272,9 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
                   </div>
                   <div className="flex items-center gap-2">
                     <Input value={slotInputs[idx]} onChange={(e) => setSlotInputs((prev) => prev.map((v, i) => i===idx ? e.target.value : v))} placeholder="ID" className="w-20" />
-                    <Button type="button" size="sm" onClick={() => { void onAddAt(idx) }}>Aggiungi</Button>
+                    <Button type="button" size="sm" disabled={mutating || saving} onClick={() => { void onAddAt(idx) }}>
+                      {mutating ? <LoadingIndicator size="xs" label="Aggiunta..." /> : 'Aggiungi'}
+                    </Button>
                   </div>
                 </div>
               )}
