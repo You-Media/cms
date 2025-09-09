@@ -381,7 +381,7 @@ export default function EditArticlePageImpl() {
         let p = articleDetailInflight.get(key)
         if (!p) {
           p = (async () => {
-            const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(key), undefined, { suppressGlobalToasts: true })
+            const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL_ME(key), undefined, { suppressGlobalToasts: true })
             const d = (res as any)?.data || res
             const art = d?.data || d
             try { articleDetailCache.set(key, art) } catch {}
@@ -780,7 +780,7 @@ export default function EditArticlePageImpl() {
       await api.post(API_ENDPOINTS.ARTICLES.UPDATE(String(id)), formData as any)
       toast.success('Articolo aggiornato con successo')
       try {
-        const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL(String(id)))
+        const res = await api.get<any>(API_ENDPOINTS.ARTICLES.DETAIL_ME(String(id)))
         const d = (res as any)?.data || res
         const article = d?.data || d
         const titleV = article?.title ?? ''

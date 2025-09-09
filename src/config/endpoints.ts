@@ -69,6 +69,7 @@ export const API_ENDPOINTS = {
     ULTIMISSIMI: '/articles/ultimissimi',
     CREATE: '/articles',
     DETAIL: (id: number | string) => `/articles/${id}`,
+    DETAIL_ME: (id: number | string) => `/me/articles/${id}`,
     UPDATE: (id: number | string) => `/articles/${id}`,
     DELETE: (id: number | string) => `/articles/${id}`,
     APPROVE: (id: number | string) => `/articles/${id}/approve`,
