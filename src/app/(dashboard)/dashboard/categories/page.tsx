@@ -287,6 +287,8 @@ export default function CategoriesPage() {
   const [editOrder, setEditOrder] = useState<number | ''>('')
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
   const [orderedReloadToken, setOrderedReloadToken] = useState<number>(0)
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState<boolean>(false)
+  const [isSubmittingCreate, setIsSubmittingCreate] = useState<boolean>(false)
 
   // Form state (create)
   const [newTitle, setNewTitle] = useState<string>('')
@@ -840,13 +842,14 @@ export default function CategoriesPage() {
             
             <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-end gap-3">
-                <Button variant="secondary" onClick={() => setIsEditOpen(false)} className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setIsEditOpen(false)} disabled={isSubmittingEdit} className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Annulla
                 </Button>
-                <Button onClick={async () => {
+                <Button disabled={isSubmittingEdit} onClick={async () => {
+                  if (isSubmittingEdit) return
                   if (!editCategory) return
                   if (!editTitle.trim() && editParentId === (editCategory.parent_id ? String(editCategory.parent_id) : '')) {
                     // Nessun cambiamento
@@ -854,6 +857,7 @@ export default function CategoriesPage() {
                     return
                   }
                   try {
+                    setIsSubmittingEdit(true)
                     const payload: { title?: string; parent_id?: number | null; order?: number } = {}
                     if (editTitle.trim() && editTitle.trim() !== editCategory.title) payload.title = editTitle.trim()
                     // parent_id: consenti null/numero; invia solo se differente
@@ -872,12 +876,14 @@ export default function CategoriesPage() {
                     }
                   } catch {
                     // Errori gestiti globalmente
+                  } finally {
+                    setIsSubmittingEdit(false)
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Salva modifiche
+                  {isSubmittingEdit ? 'Salvataggio...' : 'Salva modifiche'}
                 </Button>
               </div>
             </div>
@@ -1046,18 +1052,20 @@ export default function CategoriesPage() {
             
             <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-end gap-3">
-                <Button variant="secondary" onClick={() => setIsCreateOpen(false)} className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setIsCreateOpen(false)} disabled={isSubmittingCreate} className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Annulla
                 </Button>
-                <Button onClick={async () => {
+                <Button disabled={isSubmittingCreate} onClick={async () => {
+                  if (isSubmittingCreate) return
                   if (!newTitle.trim()) {
                     toast.error('Inserisci un titolo valido')
                     return
                   }
                   try {
+                    setIsSubmittingCreate(true)
                     await createCategory({ 
                       title: newTitle.trim(), 
                       parent_id: newParentId ? Number(newParentId) : null,
@@ -1076,12 +1084,14 @@ export default function CategoriesPage() {
                     }
                   } catch {
                     // Errori gestiti globalmente
+                  } finally {
+                    setIsSubmittingCreate(false)
                   }
                 }} className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Crea categoria
+                  {isSubmittingCreate ? 'Creazione...' : 'Crea categoria'}
                 </Button>
               </div>
             </div>

@@ -19,6 +19,7 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [hasSearched, setHasSearched] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -28,10 +29,11 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
     setTotalPages(1)
     setQuery('')
     setHasSearched(false)
-    void runSearch(1, { allowEmpty: true })
+    setInitialLoading(true)
+    void runSearch(1, { allowEmpty: true, initial: true })
   }, [open])
 
-  async function runSearch(p = 1, opts?: { allowEmpty?: boolean }) {
+  async function runSearch(p = 1, opts?: { allowEmpty?: boolean; initial?: boolean }) {
     if (!open) return
     const q = query.trim()
     const allowEmpty = Boolean(opts?.allowEmpty)
@@ -59,6 +61,7 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
       setHasSearched(true)
     } finally {
       setLoading(false)
+      if (opts?.initial) setInitialLoading(false)
     }
   }
 
@@ -68,7 +71,18 @@ export default function CategorySelectModal({ open, onClose, onSelect }: Categor
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-3xl rounded-xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="w-full max-w-3xl rounded-xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+        {initialLoading && (
+          <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-10">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <svg className="animate-spin h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Caricamento...
+            </div>
+          </div>
+        )}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Seleziona categoria</h2>

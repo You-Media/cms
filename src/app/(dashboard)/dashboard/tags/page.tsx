@@ -42,6 +42,8 @@ export default function TagsPage() {
     name: '',
     description: '',
   })
+  const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
   const lastParamsRef = useRef<string>('')
   const lastSubmittedFiltersRef = useRef<{ searchTerm?: string } | null>(null)
 
@@ -97,12 +99,15 @@ export default function TagsPage() {
     }
 
     try {
+      setIsSubmittingCreate(true)
       await createTag(formData)
       toast.success('Tag creato con successo')
       setIsCreateModalOpen(false)
       setFormData({ name: '', description: '' })
     } catch (error) {
       // Errori gestiti globalmente
+    } finally {
+      setIsSubmittingCreate(false)
     }
   }
 
@@ -114,6 +119,7 @@ export default function TagsPage() {
     }
 
     try {
+      setIsSubmittingEdit(true)
       await updateTag(editingTag.id, formData)
       toast.success('Tag aggiornato con successo')
       setIsEditModalOpen(false)
@@ -121,6 +127,8 @@ export default function TagsPage() {
       setFormData({ name: '', description: '' })
     } catch (error) {
       // Errori gestiti globalmente
+    } finally {
+      setIsSubmittingEdit(false)
     }
   }
 
@@ -352,17 +360,17 @@ export default function TagsPage() {
             
             <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-end gap-3">
-                <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)} className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)} disabled={isSubmittingCreate} className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Annulla
                 </Button>
-                <Button onClick={handleSubmitCreate} className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                <Button onClick={handleSubmitCreate} disabled={isSubmittingCreate} className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Crea tag
+                  {isSubmittingCreate ? 'Creazione...' : 'Crea tag'}
                 </Button>
               </div>
             </div>
@@ -424,7 +432,7 @@ export default function TagsPage() {
             
             <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-end gap-3">
-                <Button variant="secondary" onClick={() => {
+                <Button variant="secondary" disabled={isSubmittingEdit} onClick={() => {
                   setIsEditModalOpen(false)
                   setEditingTag(null)
                 }} className="flex items-center gap-2">
@@ -433,11 +441,11 @@ export default function TagsPage() {
                   </svg>
                   Annulla
                 </Button>
-                <Button onClick={handleSubmitEdit} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                <Button onClick={handleSubmitEdit} disabled={isSubmittingEdit} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  Aggiorna tag
+                  {isSubmittingEdit ? 'Salvataggio...' : 'Aggiorna tag'}
                 </Button>
               </div>
             </div>
