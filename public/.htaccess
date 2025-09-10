@@ -16,6 +16,14 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
+  # If a directory-specific index.html exists (from next export), serve it
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html -f
+  RewriteRule ^ %{REQUEST_URI}/index.html [L]
+
+  # If a direct .html exists (from next export), serve it
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}.html -f
+  RewriteRule ^ %{REQUEST_URI}.html [L]
+
   # Route everything else to index.html for SPA routing
   RewriteRule ^ index.html [L]
 </IfModule>
