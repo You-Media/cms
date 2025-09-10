@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { ApiError } from '@/lib/api'
 import { Tag, CreateTagRequest } from '@/types/tags'
+import RowActionsMenu from '@/components/table/RowActionsMenu'
 
 export default function TagsPage() {
   const { hasAnyRole, canManageTags } = useAuth()
@@ -189,6 +190,36 @@ export default function TagsPage() {
 
           const columns: Array<DataTableColumn<Tag>> = [
             {
+              key: 'actions',
+              header: (
+                <div className="flex items-center space-x-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                  <span>Azioni</span>
+                </div>
+              ),
+              cell: (tag) => {
+                const items = [
+                  {
+                    label: 'Modifica',
+                    onClick: () => handleEdit(tag),
+                    disabled: !canManageTags,
+                    icon: (<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>),
+                  },
+                  {
+                    label: 'Elimina',
+                    onClick: () => handleDelete(tag),
+                    destructive: true,
+                    disabled: !canManageTags,
+                    icon: (<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>),
+                  },
+                ]
+                return <RowActionsMenu items={items} ariaLabel={`Azioni tag #${tag.id}`} />
+              },
+              tdClassName: 'px-6 py-4 whitespace-nowrap',
+            },
+            {
               key: 'id',
               header: (
                 <div className="flex items-center space-x-2">
@@ -238,46 +269,6 @@ export default function TagsPage() {
               cell: (tag) => (
                 <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-xs font-mono">{tag.slug}</code>
               ),
-            },
-            {
-              key: 'actions',
-              header: (
-                <div className="flex items-center space-x-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
-                  <span>Azioni</span>
-                </div>
-              ),
-              cell: (tag) => (
-                <div className="flex space-x-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!canManageTags}
-                    onClick={() => handleEdit(tag)}
-                    className="flex items-center gap-1.5"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Modifica
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={!canManageTags}
-                    onClick={() => handleDelete(tag)}
-                    className="flex items-center gap-1.5"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Elimina
-                  </Button>
-                </div>
-              ),
-              tdClassName: 'px-6 py-4 whitespace-nowrap',
             },
           ]
 

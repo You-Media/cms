@@ -4,6 +4,10 @@ import { toast } from 'sonner'
 import { API_ENDPOINTS } from '@/config/endpoints'
 import type { Banner, FilterBannersParams, FilterBannersResponse, BannerStatus } from '@/types/banners'
 
+// Simple in-memory cache and in-flight requests map to avoid duplicate network calls
+const bannerDetailCache: Map<number, Banner> = new Map()
+const bannerDetailInFlight: Map<number, Promise<Banner>> = new Map()
+
 export function useBanners() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(false)
@@ -92,15 +96,42 @@ export function useBanners() {
   }, [currentPage, perPage, filterBanners])
 
   const fetchBannerDetail = useCallback(async (id: number) => {
-    try {
-      const res = await api.get<{ status: string; message: string; data: Banner }>(API_ENDPOINTS.BANNERS.DETAIL(id))
-      return res.data as unknown as Banner
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 500) {
-        toast.error('Qualcosa è andato storto. Riprova più tardi.')
-      }
-      throw error
+    // Return from cache if available
+    if (bannerDetailCache.has(id)) {
+      const cached = bannerDetailCache.get(id) as Banner
+      console.log('⚡ [useBanners] Returning cached banner detail for ID:', id)
+      return cached
     }
+
+    // Deduplicate concurrent requests
+    if (bannerDetailInFlight.has(id)) {
+      console.log('⏳ [useBanners] Awaiting in-flight banner detail for ID:', id)
+      return bannerDetailInFlight.get(id) as Promise<Banner>
+    }
+
+    console.log('🔄 [useBanners] Fetching banner detail for ID:', id)
+    const promise = (async () => {
+      try {
+        const res = await api.get<any>(API_ENDPOINTS.BANNERS.DETAIL(id))
+        const payload = res?.data
+        // Support both shapes: { data: Banner } and Banner
+        const banner = (payload && (payload.data ?? payload)) as Banner
+        bannerDetailCache.set(id, banner)
+        console.log('✅ [useBanners] Banner detail fetched and cached for ID:', id)
+        return banner
+      } catch (error) {
+        console.error('❌ [useBanners] Error fetching banner detail:', error)
+        if (error instanceof ApiError && error.status === 500) {
+          toast.error('Qualcosa è andato storto. Riprova più tardi.')
+        }
+        throw error
+      } finally {
+        bannerDetailInFlight.delete(id)
+      }
+    })()
+
+    bannerDetailInFlight.set(id, promise)
+    return promise
   }, [])
 
   return {

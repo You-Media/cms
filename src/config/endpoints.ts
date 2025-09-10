@@ -47,6 +47,7 @@ export const API_ENDPOINTS = {
     STATUS: (id: number | string) => `/banners/${id}/status`,
     ADD: '/banners/add',
     DETAIL: (id: number | string) => `/banners/${id}`,
+    UPDATE: (id: number | string) => `/banners/${id}`,
   },
 
   // Users endpoints

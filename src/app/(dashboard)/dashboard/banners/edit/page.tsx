@@ -28,7 +28,7 @@ export default function EditBannerPage() {
     )
   }
 
-  return <NewBannerPage />
+  return <NewBannerPage mode="edit" bannerId={Number(id)} />
 }
 
 

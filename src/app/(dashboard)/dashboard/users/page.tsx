@@ -15,6 +15,7 @@ import { useUsers, type UserRoleFilter, fetchPermissionsByRole, blockUserPermiss
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { APP_ROUTES } from '@/config/routes'
+import RowActionsMenu from '@/components/table/RowActionsMenu'
 
 export default function UsersPage() {
   const { selectedSite, hasAnyRole, hasPermission, isSuperAdmin } = useAuth()
@@ -176,6 +177,37 @@ export default function UsersPage() {
 
   const columns: Array<DataTableColumn<{ id: number; fullName: string; email: string; createdAt: string | null; roles: string[]; permissions: string[]; profilePhoto?: string; articlesCount?: number }>> = [
     {
+      key: 'actions',
+      header: 'Azioni',
+      cell: (u) => {
+        const normalizedRoles = (u.roles || []).map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
+        const canManageAll = hasPermission('manage_users')
+        let canDelete = canManageAll
+        if (!canDelete) {
+          if (normalizedRoles.includes('publisher')) canDelete = hasPermission('manage_publishers')
+          if (normalizedRoles.includes('editorinchief')) canDelete = canDelete || hasPermission('manage_editors_in_chief')
+          if (normalizedRoles.includes('advertisingmanager')) canDelete = canDelete || hasPermission('manage_advertising_managers')
+          if (normalizedRoles.includes('journalist')) canDelete = canDelete || hasPermission('manage_journalists')
+        }
+        const canEdit = canDelete
+        const items = [
+          canEdit ? {
+            label: 'Modifica',
+            href: APP_ROUTES.DASHBOARD.USERS.EDIT(u.id),
+            icon: (<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>),
+          } : null,
+          canDelete ? {
+            label: 'Elimina',
+            destructive: true,
+            onClick: () => setDeleteConfirm({ id: u.id, name: u.fullName || u.email, roles: Array.isArray(u.roles) ? u.roles : [] }),
+            icon: (<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>),
+          } : null,
+        ].filter(Boolean) as any
+        return <RowActionsMenu items={items} ariaLabel={`Azioni utente #${u.id}`} />
+      },
+      tdClassName: 'px-6 py-4 whitespace-nowrap',
+    },
+    {
       key: 'id',
       header: (
         <div className="flex items-center space-x-2">
@@ -331,47 +363,6 @@ export default function UsersPage() {
             </svg>
             <span>{count > 0 ? `${count} permessi` : 'Nessuno'}</span>
           </button>
-        )
-      },
-    },
-    {
-      key: 'actions',
-      header: 'Azioni',
-      cell: (u) => {
-        const normalizedRoles = (u.roles || []).map((r) => r.toLowerCase().replace(/[^a-z]/g, ''))
-        const canManageAll = hasPermission('manage_users')
-        let canDelete = canManageAll
-        if (!canDelete) {
-          if (normalizedRoles.includes('publisher')) canDelete = hasPermission('manage_publishers')
-          if (normalizedRoles.includes('editorinchief')) canDelete = canDelete || hasPermission('manage_editors_in_chief')
-          if (normalizedRoles.includes('advertisingmanager')) canDelete = canDelete || hasPermission('manage_advertising_managers')
-          if (normalizedRoles.includes('journalist')) canDelete = canDelete || hasPermission('manage_journalists')
-        }
-        const canEdit = canDelete
-        return (
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <Link href={APP_ROUTES.DASHBOARD.USERS.EDIT(u.id)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs hover:bg-gray-50 dark:hover:bg-gray-800">
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                Modifica
-              </Link>
-            )}
-            {canDelete ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeleteConfirm({ id: u.id, name: u.fullName || u.email, roles: Array.isArray(u.roles) ? u.roles : [] })}
-                className="flex items-center gap-1.5"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Elimina
-              </Button>
-            ) : (
-              <span className="text-xs text-gray-400">—</span>
-            )}
-          </div>
         )
       },
     },

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import Link from 'next/link'
 import { APP_ROUTES } from '@/config/routes'
@@ -211,6 +212,31 @@ export default function BannersPage() {
     )
   }
 
+  function BannerPreviewCell({ banner }: { banner: Banner }) {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        {banner.banner_preview ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-block focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+            title="Ingrandisci anteprima"
+          >
+            <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+              <img src={banner.banner_url} alt={`banner-${banner.id}`} className="max-h-full max-w-full object-contain" />
+            </div>
+          </button>
+        ) : (
+          <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+            <img src={banner.banner_url} alt={`banner-${banner.id}`} className="max-h-full max-w-full object-contain" />
+          </div>
+        )}
+        {banner.banner_preview && open && <PreviewModal src={banner.banner_url} onClose={() => setOpen(false)} />}
+      </>
+    )
+  }
+
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmTarget, setConfirmTarget] = useState<Banner | null>(null)
   const [conflictBanner, setConflictBanner] = useState<Banner | null>(null)
@@ -242,16 +268,94 @@ export default function BannersPage() {
   function RowActions({ banner }: { banner: Banner }) {
     const [open, setOpen] = useState(false)
     const menuRef = useRef<HTMLDivElement | null>(null)
+    const buttonRef = useRef<HTMLButtonElement | null>(null)
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+    const menuPanelRef = useRef<HTMLDivElement | null>(null)
 
     useEffect(() => {
       function onDocClick(e: MouseEvent) {
-        if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-          setOpen(false)
-        }
+        const target = e.target as Node
+        const insideButton = menuRef.current && menuRef.current.contains(target)
+        const insidePanel = menuPanelRef.current && menuPanelRef.current.contains(target)
+        if (!insideButton && !insidePanel) setOpen(false)
       }
       document.addEventListener('mousedown', onDocClick)
       return () => document.removeEventListener('mousedown', onDocClick)
     }, [])
+
+    useEffect(() => {
+      function positionMenu() {
+        if (!open) return
+        const btn = buttonRef.current
+        const MENU_WIDTH = 176
+        const ESTIMATED_MENU_HEIGHT = 200 // reduced estimated menu height
+        const GAP = 8
+        if (btn) {
+          const rect = btn.getBoundingClientRect()
+          let left = rect.left
+          let top = rect.bottom + GAP
+          
+          // Check if there's space below, otherwise position above
+          if (top + ESTIMATED_MENU_HEIGHT > window.innerHeight - 8) {
+            top = rect.top - GAP - ESTIMATED_MENU_HEIGHT
+            // If still not enough space above, position at the best available spot
+            if (top < 8) {
+              top = Math.max(8, Math.min(rect.top - 8, window.innerHeight - ESTIMATED_MENU_HEIGHT - 8))
+            }
+          }
+          
+          // keep within viewport horizontally
+          if (left + MENU_WIDTH > window.innerWidth - 8) {
+            left = Math.max(8, window.innerWidth - MENU_WIDTH - 8)
+          }
+          if (left < 8) left = 8
+          setMenuPos({ top, left })
+        }
+      }
+      positionMenu()
+      window.addEventListener('resize', positionMenu)
+      window.addEventListener('scroll', positionMenu, true)
+      return () => {
+        window.removeEventListener('resize', positionMenu)
+        window.removeEventListener('scroll', positionMenu, true)
+      }
+    }, [open])
+
+    useEffect(() => {
+      if (!open) return
+      const btn = buttonRef.current
+      const panel = menuPanelRef.current
+      if (!btn || !panel) return
+      const rect = btn.getBoundingClientRect()
+      const GAP = 8
+      const MARGIN = 8
+      const h = panel.offsetHeight || 0
+      const w = panel.offsetWidth || 176
+      
+      let left = rect.left
+      let top = rect.bottom + GAP
+      
+      // Precise vertical positioning with actual height
+      if (top + h > window.innerHeight - MARGIN) {
+        // Try positioning above
+        const topAbove = rect.top - GAP - h
+        if (topAbove >= MARGIN) {
+          top = topAbove
+        } else {
+          // Neither above nor below fits well, position at best spot
+          top = Math.max(MARGIN, Math.min(topAbove, window.innerHeight - h - MARGIN))
+        }
+      }
+      
+      // Precise horizontal positioning with actual width
+      if (left + w > window.innerWidth - MARGIN) {
+        left = Math.max(MARGIN, window.innerWidth - w - MARGIN)
+      }
+      if (left < MARGIN) left = MARGIN
+      
+      setMenuPos({ top, left })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open])
 
     return (
       <div className="relative" ref={menuRef}>
@@ -264,6 +368,7 @@ export default function BannersPage() {
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label={`Azioni banner #${banner.id}`}
+          ref={buttonRef}
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="5" cy="12" r="2" />
@@ -271,8 +376,8 @@ export default function BannersPage() {
             <circle cx="19" cy="12" r="2" />
           </svg>
         </Button>
-        {open && (
-          <div className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-20 py-1">
+        {open && menuPos && createPortal(
+          <div ref={menuPanelRef} style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }} className="w-44 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-[2000] py-1">
             {(canPublish || canUnpublish) && (
               <>
                 {canPublish && (
@@ -401,13 +506,19 @@ export default function BannersPage() {
               </svg>
               Cancella banner
             </button>
-          </div>
+          </div>, document.body
         )}
       </div>
     )
   }
 
   const columns: Array<DataTableColumn<Banner>> = [
+    {
+      key: 'actions',
+      header: 'Azioni',
+      cell: (b) => <RowActions banner={b} />,
+      tdClassName: 'px-6 py-4 whitespace-nowrap',
+    },
     {
       key: 'id',
       header: 'ID',
@@ -425,30 +536,9 @@ export default function BannersPage() {
     {
       key: 'banner_url',
       header: 'Anteprima',
-      cell: (b) => {
-        const [open, setOpen] = useState(false)
-        return (
-          <>
-            {b.banner_preview ? (
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="inline-block focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
-                title="Ingrandisci anteprima"
-              >
-                <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
-                  <img src={b.banner_url} alt={`banner-${b.id}`} className="max-h-full max-w-full object-contain" />
-                </div>
-              </button>
-            ) : (
-              <div className="h-16 w-64 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
-                <img src={b.banner_url} alt={`banner-${b.id}`} className="max-h-full max-w-full object-contain" />
-              </div>
-            )}
-            {b.banner_preview && open && <PreviewModal src={b.banner_url} onClose={() => setOpen(false)} />}
-          </>
-        )
-      },
+      cell: (b) => (
+        <BannerPreviewCell banner={b} />
+      ),
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
     {
@@ -545,12 +635,6 @@ export default function BannersPage() {
         </TooltipProvider>
       ),
       tdClassName: 'px-6 py-4',
-    },
-    {
-      key: 'actions',
-      header: 'Azioni',
-      cell: (b) => <RowActions banner={b} />,
-      tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
   ]
 
@@ -683,7 +767,7 @@ export default function BannersPage() {
         </div>
       </FiltersCard>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible">
         <ResultsHeader
           title="Risultati"
           subtitle={`${total} risultati`}
@@ -745,6 +829,7 @@ export default function BannersPage() {
           loadingLabel="Caricamento banner..."
           emptyTitle="Nessun banner trovato"
           emptySubtitle="Prova a regolare i filtri"
+          panHintAlways
         />
       </div>
 

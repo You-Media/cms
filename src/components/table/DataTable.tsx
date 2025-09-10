@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export type DataTableColumn<T> = {
   key: string
@@ -19,6 +19,8 @@ type DataTableProps<T> = {
   emptyTitle?: string
   emptySubtitle?: string
   emptyIcon?: React.ReactNode
+  showPanHint?: boolean
+  panHintAlways?: boolean
 }
 
 export function DataTable<T>({
@@ -30,10 +32,125 @@ export function DataTable<T>({
   emptyTitle = 'Nessun risultato',
   emptySubtitle = 'Prova a modificare i filtri di ricerca',
   emptyIcon,
+  showPanHint = true,
+  panHintAlways = false,
 }: DataTableProps<T>) {
+  const topScrollRef = useRef<HTMLDivElement | null>(null)
+  const bottomScrollRef = useRef<HTMLDivElement | null>(null)
+  const tableRef = useRef<HTMLTableElement | null>(null)
+  const isSyncingRef = useRef(false)
+  const [scrollWidth, setScrollWidth] = useState<number>(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStateRef = useRef<{ startX: number; startScrollLeft: number; source: 'top' | 'bottom' } | null>(null)
+  const [canPan, setCanPan] = useState<boolean>(false)
+
+  useEffect(() => {
+    const updateWidths = () => {
+      const w = tableRef.current ? tableRef.current.scrollWidth : 0
+      setScrollWidth(w)
+      const client = bottomScrollRef.current ? bottomScrollRef.current.clientWidth : 0
+      setCanPan(w > client + 1)
+    }
+    updateWidths()
+    window.addEventListener('resize', updateWidths)
+    return () => window.removeEventListener('resize', updateWidths)
+  }, [data, columns])
+
+  useEffect(() => {
+    const topEl = topScrollRef.current
+    const bottomEl = bottomScrollRef.current
+    if (!topEl || !bottomEl) return
+
+    const onTopScroll = () => {
+      if (isSyncingRef.current) return
+      isSyncingRef.current = true
+      bottomEl.scrollLeft = topEl.scrollLeft
+      isSyncingRef.current = false
+    }
+    const onBottomScroll = () => {
+      if (isSyncingRef.current) return
+      isSyncingRef.current = true
+      topEl.scrollLeft = bottomEl.scrollLeft
+      isSyncingRef.current = false
+    }
+    topEl.addEventListener('scroll', onTopScroll)
+    bottomEl.addEventListener('scroll', onBottomScroll)
+    return () => {
+      topEl.removeEventListener('scroll', onTopScroll)
+      bottomEl.removeEventListener('scroll', onBottomScroll)
+    }
+  }, [])
+
+  // Right-click drag to scroll (panning)
+  useEffect(() => {
+    const topEl = topScrollRef.current
+    const bottomEl = bottomScrollRef.current
+    if (!topEl || !bottomEl) return
+
+    const onMouseDown = (source: 'top' | 'bottom') => (e: MouseEvent) => {
+      // Right button only: e.button === 2
+      if (e.button !== 2) return
+      e.preventDefault()
+      const container = source === 'top' ? topEl : bottomEl
+      setIsDragging(true)
+      dragStateRef.current = { startX: e.clientX, startScrollLeft: container.scrollLeft, source }
+      document.body.style.cursor = 'grabbing'
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !dragStateRef.current) return
+      const { startX, startScrollLeft, source } = dragStateRef.current
+      const deltaX = e.clientX - startX
+      const container = source === 'top' ? topEl : bottomEl
+      const next = startScrollLeft - deltaX
+      container.scrollLeft = next
+      // sync the other container via the scroll listener
+    }
+
+    const endDrag = () => {
+      if (!isDragging) return
+      setIsDragging(false)
+      dragStateRef.current = null
+      document.body.style.cursor = ''
+    }
+
+    // Attach handlers
+    topEl.addEventListener('mousedown', onMouseDown('top'))
+    bottomEl.addEventListener('mousedown', onMouseDown('bottom'))
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', endDrag)
+    const onContextMenu = (e: MouseEvent) => {
+      if (isDragging) e.preventDefault()
+    }
+    window.addEventListener('contextmenu', onContextMenu)
+
+    return () => {
+      topEl.removeEventListener('mousedown', onMouseDown('top'))
+      bottomEl.removeEventListener('mousedown', onMouseDown('bottom'))
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', endDrag)
+      window.removeEventListener('contextmenu', onContextMenu)
+    }
+  }, [isDragging])
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+    <div>
+      {/* Top horizontal scrollbar */}
+      <div ref={topScrollRef} className={`overflow-x-auto ${isDragging ? 'cursor-grabbing' : ''}`} onContextMenu={(e) => { if (isDragging) e.preventDefault() }}>
+        <div style={{ width: scrollWidth || '100%' }} />
+      </div>
+      {showPanHint && (canPan || panHintAlways) && (
+        <div className="px-3 py-2 text-[11px] text-gray-600 dark:text-gray-300">
+          <div className="mx-auto w-full flex items-center justify-center gap-2">
+            <svg className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 18.5A6.5 6.5 0 1012 5.5a6.5 6.5 0 000 13z" />
+            </svg>
+            <span>Tasto destro: trascina per scorrere orizzontalmente</span>
+          </div>
+        </div>
+      )}
+      {/* Table with bottom scrollbar */}
+      <div ref={bottomScrollRef} className={`overflow-x-auto ${isDragging ? 'cursor-grabbing' : ''}`} onContextMenu={(e) => { if (isDragging) e.preventDefault() }}>
+        <table ref={tableRef} className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {columns.map((col) => (
@@ -86,7 +203,8 @@ export function DataTable<T>({
             ))
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   )
 }

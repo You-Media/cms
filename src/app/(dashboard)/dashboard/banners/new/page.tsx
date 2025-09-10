@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { useBanners } from '@/hooks/use-banners'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -16,11 +17,13 @@ import ImageCropperModal from '@/components/forms/image-cropper-modal'
 import ArticleSelectModal from '@/components/forms/article-select-modal'
 import CategorySelectModal from '@/components/forms/category-select-modal'
 
-export default function NewBannerPage() {
+export default function NewBannerPage({ mode = 'create', bannerId }: { mode?: 'create' | 'edit'; bannerId?: number }) {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
+  const { fetchBannerDetail } = useBanners()
   const allowedRoles = ['PUBLISHER', 'ADVERTISING_MANAGER']
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles)
   const canCreate = hasPermission('create_banner')
+  const canEdit = hasPermission('edit_banner')
 
   if (!canView) {
     return (
@@ -31,11 +34,20 @@ export default function NewBannerPage() {
     )
   }
 
-  if (!canCreate) {
+  if (mode === 'create' && !canCreate) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">403 - Operazione non consentita</h1>
         <p className="text-sm text-gray-500 mt-2">Non hai il permesso per creare nuovi banner.</p>
+      </div>
+    )
+  }
+
+  if (mode === 'edit' && !canEdit) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">403 - Operazione non consentita</h1>
+        <p className="text-sm text-gray-500 mt-2">Non hai il permesso per modificare i banner.</p>
       </div>
     )
   }
@@ -62,13 +74,39 @@ export default function NewBannerPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const imageDropRef = useRef<HTMLButtonElement | null>(null)
 
-  // Precompila in edit (se arriviamo con un banner nel draft store)
+  // Prefill in edit mode
   useEffect(() => {
-    const src = null
-    if (src) {
-      skipNextModelResetRef.current = true
-    }
-  }, [])
+    let active = true
+    ;(async () => {
+      if (mode !== 'edit' || !bannerId) return
+      console.log('🔄 Fetching banner detail for ID:', bannerId)
+      try {
+        const b = await fetchBannerDetail(bannerId)
+        console.log('✅ Banner data received:', b)
+        if (!active || !b) return
+        skipNextModelResetRef.current = true
+        setModel(b.model)
+        setModelId(b.model_id ?? '')
+        setPosition(b.position)
+        setOrder(b.order)
+        setLink(b.link || '')
+        // use preview for existing image
+        setImagePreview(b.banner_url || b.banner_preview || null)
+        // summary labels if available
+        if (b.model === 'Article') {
+          setSelectedArticleTitle(b.model_title || null)
+        }
+        if (b.model === 'Category') {
+          setSelectedCategoryTitle(b.model_title || null)
+        }
+        console.log('✅ Form fields updated with banner data')
+      } catch (e) {
+        console.error('❌ Error fetching banner detail:', e)
+        // errors are handled globally
+      }
+    })()
+    return () => { active = false }
+  }, [mode, bannerId, fetchBannerDetail])
 
   // On edit: if model title is missing, fetch it so the selection summary looks like after a modal pick
   useEffect(() => {
@@ -101,21 +139,28 @@ export default function NewBannerPage() {
 
     setSubmitting(true)
     try {
-      await api.post(API_ENDPOINTS.BANNERS.ADD, formData as any)
-      toast.success('Banner creato con successo')
+      if (mode === 'edit' && bannerId) {
+        // Method override for backends that require PUT for updates
+        formData.append('_method', 'PUT')
+        await api.post(API_ENDPOINTS.BANNERS.UPDATE(bannerId), formData as any)
+        toast.success('Banner aggiornato con successo')
+      } else {
+        await api.post(API_ENDPOINTS.BANNERS.ADD, formData as any)
+        toast.success('Banner creato con successo')
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 403) {
-          toast.error('Non sei autorizzato a creare banner')
+          toast.error('Non sei autorizzato a effettuare questa operazione')
         } else if (error.status === 422) {
           toast.error('Dati non validi - verifica i campi')
         } else if (error.status === 500) {
           toast.error('Qualcosa è andato storto. Riprova più tardi.')
         } else {
-          toast.error('Creazione non riuscita')
+          toast.error('Operazione non riuscita')
         }
       } else {
-        toast.error('Creazione non riuscita')
+        toast.error('Operazione non riuscita')
       }
     } finally {
       setSubmitting(false)
@@ -200,8 +245,8 @@ export default function NewBannerPage() {
   return (
     <div className="p-6 space-y-8">
       <PageHeaderCard
-        title={'Nuovo banner'}
-        subtitle={'Seleziona il target, definisci posizionamento e carica l’immagine'}
+        title={mode === 'edit' ? 'Modifica banner' : 'Nuovo banner'}
+        subtitle={mode === 'edit' ? 'Aggiorna le informazioni del banner' : 'Seleziona il target, definisci posizionamento e carica l’immagine'}
         icon={(
           <svg className="h-8 w-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -563,7 +608,7 @@ export default function NewBannerPage() {
               </div>
               <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? 'Salvataggio...' : 'Crea banner'}
+                  {submitting ? 'Salvataggio...' : (mode === 'edit' ? 'Salva modifiche' : 'Crea banner')}
                 </Button>
               </div>
             </div>
