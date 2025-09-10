@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import NewBannerPage from '../new/page'
+import BannerFormPage from '../BannerFormPage'
 import { useAuth } from '@/hooks/use-auth'
 
 export default function EditBannerPage() {
@@ -28,7 +28,7 @@ export default function EditBannerPage() {
     )
   }
 
-  return <NewBannerPage mode="edit" bannerId={Number(id)} />
+  return <BannerFormPage mode="edit" bannerId={Number(id)} />
 }
 
 
