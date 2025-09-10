@@ -35,21 +35,9 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 
   const handleSubmit = async (data: LoginFormData) => {
     if (isLoading) return
-    
-    try {
-      clearError()
-      const otpResponse = await login(data, data.site)
-      
-      if (otpResponse) {
-        // Se richiede OTP, passa i dati OTP
-        onSubmit(data)
-      } else {
-        // Se non richiede OTP, il login è completato
-        onSubmit(data)
-      }
-    } catch (error) {
-      // L'errore è già gestito nello store
-    }
+    // Delega il login al livello superiore, evitando doppie chiamate
+    clearError()
+    onSubmit(data)
   }
 
   return (
