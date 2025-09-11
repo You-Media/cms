@@ -638,10 +638,10 @@ export default function NewArticlePage() {
                   <Input 
                     type="number" 
                     min="0" 
-                    max="10" 
+                    max="100" 
                     value={priority} 
                     onChange={(e) => setPriority(e.target.value === '' ? '' : Number(e.target.value))} 
-                    placeholder="0-10"
+                    placeholder="0-100"
                   />
                   <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-10)</p>
                 </div>
