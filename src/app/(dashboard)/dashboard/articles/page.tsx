@@ -32,6 +32,18 @@ import { LoadingIndicator } from '@/components/ui/loading-indicator'
 export default function ArticlesPage() {
   const { selectedSite, hasAnyRole, hasPermission } = useAuth()
 
+  const formatDate = (isoString: string | null | undefined): string => {
+    if (!isoString) return '-'
+    const d = new Date(isoString)
+    if (Number.isNaN(d.getTime())) return '-'
+    return d.toLocaleDateString('it-IT', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      timeZone: 'Europe/Rome' // Forza il fuso orario italiano
+    })
+  }
+
   const allowedRoles = ['JOURNALIST', 'EDITOR_IN_CHIEF', 'PUBLISHER']
   const canView = selectedSite === 'editoria' && hasAnyRole(allowedRoles)
 
@@ -207,7 +219,7 @@ export default function ArticlesPage() {
     {
       key: 'published_at',
       header: 'Pubblicazione',
-      cell: (a) => <span className="text-sm">{a.published_at || '-'}</span>,
+      cell: (a) => <span className="text-sm">{formatDate(a.published_at)}</span>,
       tdClassName: 'px-6 py-4 whitespace-nowrap',
     },
     {
