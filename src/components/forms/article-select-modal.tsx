@@ -111,7 +111,7 @@ export default function ArticleSelectModal({ open, onClose, onSelect, usePublicF
     const dt = new Date(input)
     if (Number.isNaN(dt.getTime())) return ''
     try {
-      return dt.toLocaleDateString('it-IT')
+      return dt.toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })
     } catch {
       return typeof input === 'string' ? input.slice(0, 10) : ''
     }

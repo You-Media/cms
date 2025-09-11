@@ -90,7 +90,7 @@ export default function DashboardPage() {
     {
       key: 'created_at',
       header: 'Data',
-      cell: (row) => <span className="text-sm text-gray-900 dark:text-white">{row.created_at ? new Date(row.created_at).toLocaleString() : ''}</span>,
+      cell: (row) => <span className="text-sm text-gray-900 dark:text-white">{row.created_at ? new Date(row.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : ''}</span>,
       thClassName: 'px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-48',
     },
   ], [])

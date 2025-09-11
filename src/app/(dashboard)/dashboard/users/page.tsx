@@ -280,7 +280,12 @@ export default function UsersPage() {
       ),
       cell: (u) => {
         const d = u.createdAt ? new Date(u.createdAt) : null
-        const val = d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-'
+        const val = d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('it-IT', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit',
+          timeZone: 'Europe/Rome' // Forza il fuso orario italiano
+        }) : '-'
         return <span className="text-sm text-gray-700 dark:text-gray-300">{val}</span>
       },
     },

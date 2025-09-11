@@ -65,7 +65,7 @@ export function ArticlePicker({ valueId, onChangeId, onChangeLabel, label = 'Sel
     const dt = new Date(input)
     if (Number.isNaN(dt.getTime())) return ''
     try {
-      return dt.toLocaleDateString('it-IT')
+      return dt.toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })
     } catch {
       // come ultima istanza mostra i primi 10 caratteri (YYYY-MM-DD)
       return typeof input === 'string' ? input.slice(0, 10) : ''

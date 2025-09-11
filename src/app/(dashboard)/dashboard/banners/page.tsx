@@ -140,7 +140,12 @@ export default function BannersPage() {
   const formatDate = (isoString: string): string => {
     const d = new Date(isoString)
     if (Number.isNaN(d.getTime())) return '-'
-    return d.toLocaleDateString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    return d.toLocaleDateString('it-IT', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      timeZone: 'Europe/Rome' // Forza il fuso orario italiano
+    })
   }
 
   const truncate = (text: string | null | undefined, max: number): string => {
