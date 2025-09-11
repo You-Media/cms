@@ -267,8 +267,8 @@ export default function NewArticlePage() {
       toast.error('Meta description troppo lunga (max 160)')
       return false
     }
-    if (priority !== '' && (priority < 0 || priority > 10)) {
-      toast.error('Priorità deve essere tra 0 e 10')
+    if (priority !== '' && (priority < 0 || priority > 100)) {
+      toast.error('Priorità deve essere tra 0 e 100')
       return false
     }
     return true
