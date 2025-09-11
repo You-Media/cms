@@ -46,7 +46,7 @@ export default function DashboardPage() {
     if (didFetchRef.current) return
     didFetchRef.current = true
     fetchMe()
-  }, [fetchMe])
+  }, [])
 
   const { items: notifications, loading: notificationsLoading, fetchNotifications, page: notificationsPage, perPage: notificationsPerPage, total: notificationsTotal, totalPages: notificationsTotalPages, setPage: setNotificationsPage, setPerPage: setNotificationsPerPage } = useNotifications()
   const didLoadNotificationsRef = useRef(false)
@@ -55,7 +55,7 @@ export default function DashboardPage() {
     if (didLoadNotificationsRef.current) return
     didLoadNotificationsRef.current = true
     fetchNotifications({ page: 1, per_page: 10 })
-  }, [fetchNotifications])
+  }, [])
 
   const columns = useMemo<DataTableColumn<any>[]>(() => [
     {
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       didLoadTopRef.current = true
       fetchTop()
     }
-  }, [selectedSite, fetchTop])
+  }, [selectedSite])
 
   const formatDateSafe = (value?: string | null) => {
     if (!value) return '-'
