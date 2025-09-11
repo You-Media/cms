@@ -19,6 +19,7 @@ import SEOAssistant from '@/components/forms/seo-assistant'
 import { api, ApiError } from '@/lib/api'
 import { API_ENDPOINTS } from '@/config/endpoints'
 import { APP_ROUTES } from '@/config/routes'
+import { utcToLocalDatetime } from '@/lib/utils'
 
 type ArticleType = '' | 'Notizia' | 'Editoriale'
 
@@ -178,7 +179,7 @@ export default function EditArticlePageImpl() {
               : typeof article?.province === 'string'
                 ? article.province
                 : ''
-        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const publishedV = utcToLocalDatetime(article?.published_at)
         const metaTitleV = article?.meta_title ?? ''
         const metaDescriptionV = article?.meta_description ?? ''
         const metaKeywordsV = article?.meta_keywords ?? ''
@@ -288,7 +289,7 @@ export default function EditArticlePageImpl() {
               : typeof article?.province === 'string'
                 ? article.province
                 : ''
-        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const publishedV = utcToLocalDatetime(article?.published_at)
         const metaTitleV = article?.meta_title ?? ''
         const metaDescriptionV = article?.meta_description ?? ''
         const metaKeywordsV = article?.meta_keywords ?? ''
@@ -410,7 +411,7 @@ export default function EditArticlePageImpl() {
               : typeof article?.province === 'string'
                 ? article.province
                 : ''
-        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const publishedV = utcToLocalDatetime(article?.published_at)
         const metaTitleV = article?.meta_title ?? ''
         const metaDescriptionV = article?.meta_description ?? ''
         const metaKeywordsV = article?.meta_keywords ?? ''
@@ -802,7 +803,7 @@ export default function EditArticlePageImpl() {
               : typeof article?.province === 'string'
                 ? article.province
                 : ''
-        const publishedV = article?.published_at ? String(article.published_at).replace(' ', 'T').slice(0, 16) : ''
+        const publishedV = utcToLocalDatetime(article?.published_at)
         const metaTitleV = article?.meta_title ?? ''
         const metaDescriptionV = article?.meta_description ?? ''
         const metaKeywordsV = article?.meta_keywords ?? ''
