@@ -968,7 +968,16 @@ function UltimissimiArticlesManager() {
 
   async function onAddAt(slotIndex: number) {
     const idStr = slotInputs[slotIndex]
-    const idNum = Number(idStr)
+    // Sanifica l'ID rimuovendo il carattere # se presente
+    const sanitizedIdStr = idStr.replace(/^#/, '')
+    
+    // Verifica che l'ID contenga solo numeri
+    if (!/^\d+$/.test(sanitizedIdStr)) {
+      toast.error('ID non valido: inserisci solo numeri')
+      return
+    }
+    
+    const idNum = Number(sanitizedIdStr)
     if (!idNum || Number.isNaN(idNum)) return
     if (ordered.some((a) => a.id === idNum)) {
       toast.error('Questo articolo è già presente nella lista')

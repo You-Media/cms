@@ -91,7 +91,16 @@ function OrderedCategoriesManager({ reloadToken = 0 }: { reloadToken?: number })
 
   async function onAddAt(slotIndex: number) {
     const idStr = slotInputs[slotIndex]
-    const idNum = Number(idStr)
+    // Sanifica l'ID rimuovendo il carattere # se presente
+    const sanitizedIdStr = idStr.replace(/^#/, '')
+    
+    // Verifica che l'ID contenga solo numeri
+    if (!/^\d+$/.test(sanitizedIdStr)) {
+      toast.error('ID non valido: inserisci solo numeri')
+      return
+    }
+    
+    const idNum = Number(sanitizedIdStr)
     if (!idNum || Number.isNaN(idNum)) return
     if (ordered.some((c) => c.id === idNum)) {
       toast.error('Questa categoria è già presente nella lista')
