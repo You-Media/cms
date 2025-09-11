@@ -643,7 +643,7 @@ export default function NewArticlePage() {
                     onChange={(e) => setPriority(e.target.value === '' ? '' : Number(e.target.value))} 
                     placeholder="0-100"
                   />
-                  <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-10)</p>
+                  <p className="text-xs text-gray-500">Priorità per l'ordinamento (0-100)</p>
                 </div>
               )}
             </div>
