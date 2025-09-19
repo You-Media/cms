@@ -87,6 +87,14 @@ export const API_ENDPOINTS = {
   NOTIFICATIONS: {
     INDEX: '/notifications',
   },
+
+  // Contacts endpoints
+  CONTACTS: {
+    LIST: '/contacts',
+    DELETE: (id: number | string) => `/contacts/${id}`,
+    DOWNLOAD_FILE: (id: number | string) => `/contacts/${id}/file`,
+    DETAIL: (id: number | string) => `/contacts/${id}`,
+  },
 } as const
 
 // Utility function per costruire URL completi

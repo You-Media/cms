@@ -41,6 +41,10 @@ export const APP_ROUTES = {
       NEW: '/dashboard/banners/new',
     EDIT: (id: string | number) => `/dashboard/banners/edit?id=${id}`,
     },
+    CONTACTS: {
+      LIST: '/dashboard/contacts',
+      DETAIL: (id: string | number) => `/dashboard/contacts/detail?id=${id}`,
+    },
   },
 } as const
 
@@ -108,6 +112,7 @@ function getSegmentLabel(segment: string, segments: string[], index: number): st
     tags: 'Tag',
     articles: 'Articoli',
     banners: 'Banner',
+    contacts: 'Contatti',
     publishers: 'Publisher',
     'editors-in-chief': 'Caporedattori',
     'advertising-managers': 'Manager Pubblicità',
@@ -185,6 +190,7 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/banners': ['view_banners'],
   '/dashboard/banners/new': ['create_banner'],
   '/dashboard/users/new': ['manage_users'],
+  '/dashboard/contacts': ['view_contacts'],
 }
 
 // Check if user has permission for a route
